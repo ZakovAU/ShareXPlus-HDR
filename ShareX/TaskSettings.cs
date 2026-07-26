@@ -345,6 +345,13 @@ namespace ShareX
         public bool ImageAutoJPEGQuality = false;
         public FileExistAction FileExistAction = FileExistAction.Ask;
 
+        // AVIF is the only format ShareX writes that can hold HDR, so captures with HDR content
+        // switch to it automatically instead of being flattened into the configured SDR format.
+        public bool ImageAutoUseAVIFForHDR = true;
+        public int ImageAVIFQuality = 20;
+        public int ImageAVIFSpeed = 6;
+        public bool ImageAVIFChromaSubsampling = false;
+
         #endregion Image / General
 
         #region Image / Effects

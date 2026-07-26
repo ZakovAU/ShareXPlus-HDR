@@ -28,8 +28,7 @@ public static class ShaderConstantHelper // naming is hard
             DisplayMaxLuminance = maxLuminance / 80,
             HdrMaxLuminance = maxContentLuminance / 80,
             UserBrightnessScale = settings.BrightnessScale / 100,
-            TonemapType = (uint)HdrToneMapType.MapCllToDisplay,
-            // MaxYInPQ = imageInfo.MaxYInPQ,
+            TonemapType = (uint)settings.HdrToneMapType,
         };
 
         monitorInfo.QueryMonitorData((colorInfoNullable, sdrInfoNullable, output6) =>
@@ -56,51 +55,18 @@ public static class ShaderConstantHelper // naming is hard
             }
         });
 
-        if (isHdr)
-        {
-            vertexShader.LuminanceScale.Y = 1.0f; // is hdr
-
-            // scRGB HDR 16 bpc
-            if (settings.HdrMode == HdrMode.Hdr16Bpc)
-            {
-                vertexShader.LuminanceScale.X = settings.HdrBrightnessNits / 80.0f;
-                vertexShader.LuminanceScale.W = 1.0f;
-            }
-
-            // HDR10
-            else
-            {
-                vertexShader.LuminanceScale.X = -settings.HdrBrightnessNits;
-                vertexShader.LuminanceScale.Z = 1.0f;
-            }
-        }
-
-        // TODO
-        // scRGB 16 bpc special handling
-        else // if (SKIF_ImplDX11_ViewPort_GetDXGIFormat (vp) == DXGI_FORMAT_R16G16B16A16_FLOAT)
-        {
-            // SDR 16 bpc on HDR display
-            if (sdrWhiteLevel > 80.0f)
-                vertexShader.LuminanceScale.X = (sdrWhiteLevel / 80.0f);
-
-            // SDR 16 bpc on SDR display
-            vertexShader.LuminanceScale.W = 1.0f;
-        }
-        // TODO: maybe support later?
-        // else if (SKIF_ImplDX11_ViewPort_GetDXGIFormat (vp) == DXGI_FORMAT_R10G10B10A2_UNORM)
-        // {
-        //     // SDR 10 bpc on SDR display
-        //     vertexShader.LuminanceScale.Z = 1.0f;
-        // }
-
         pixelShader.DisplayMaxLuminance = maxLuminance / 80;
-        // TODO: edit when actually supporting hdr flow, for now we always want to get sdr result
-        // if (pixelShader.UserBrightnessScale * maxContentLuminance > maxLuminance)
         pixelShader.TonemapType = (uint)settings.HdrToneMapType;
-        // else
-        //     pixelShader.TonemapType = (uint)HdrToneMapType.None;
-        pixelShader.SdrWhiteLevel = (float)(sdrWhiteLevel / 1000.0 * 80.0 * (settings.SdrWhiteScale / 100.0));
 
-        vertexShader.LuminanceScale = new Vector4(1, 0, 0, 0);
+        // DisplayConfig reports SDRWhiteLevel as a multiplier of 80 nits * 1000
+        // (i.e. 1000 == 80 nits), convert to scRGB units where 1.0 == 80 nits.
+        pixelShader.SdrWhiteLevel = (float)(sdrWhiteLevel / 1000.0 * (settings.SdrWhiteScale / 100.0));
+
+        // The render target is always an 8-bit B8G8R8A8_UNorm canvas that stores
+        // sRGB-encoded SDR pixels (HDR output formats are not currently supported),
+        // so the shader must take the 8 bpc path: lum.x = 1.0 (no extra scaling),
+        // isHDR/is10bpc/is16bpc output flags all 0. The shader still receives the
+        // HDR source texture and tonemaps it down to the SDR range first.
+        vertexShader.LuminanceScale = new Vector4(1.0f, 0.0f, 0.0f, 0.0f);
     }
 }

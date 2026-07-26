@@ -23,6 +23,8 @@
 
 #endregion License Information (GPL v3)
 
+using System;
+
 namespace ShareX.ScreenCaptureLib
 {
     public class FFmpegCaptureDevice
@@ -41,6 +43,12 @@ namespace ShareX.ScreenCaptureLib
         public static FFmpegCaptureDevice DDAGrab { get; } = new FFmpegCaptureDevice("ddagrab", "ddagrab (Desktop Duplication API)");
         public static FFmpegCaptureDevice ScreenCaptureRecorder { get; } = new FFmpegCaptureDevice("screen-capture-recorder", "dshow (screen-capture-recorder)");
         public static FFmpegCaptureDevice VirtualAudioCapturer { get; } = new FFmpegCaptureDevice("virtual-audio-capturer", "dshow (virtual-audio-capturer)");
+        public static FFmpegCaptureDevice WasapiLoopback { get; } = new FFmpegCaptureDevice("wasapi-loopback", "WASAPI loopback (system audio)");
+
+        public static bool IsWasapiLoopback(string value)
+        {
+            return WasapiLoopback.Value.Equals(value, StringComparison.OrdinalIgnoreCase);
+        }
 
         public override string ToString()
         {

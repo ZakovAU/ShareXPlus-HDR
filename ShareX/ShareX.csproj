@@ -11,6 +11,14 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <!-- Ahead-of-time crossgen the bundled assemblies: faster startup and steady-state
+         for the capture hot paths, at the cost of a somewhat larger single file. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- Embed symbols in the single file instead of shipping a separate PDB; stack
+         traces in error reports keep working and there is one less file to deploy. -->
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="ZXing.Net" Version="0.16.10" />

@@ -101,6 +101,7 @@ namespace ShareX.ScreenCaptureLib
         private Rectangle captureRectangle;
         private ImageCache imgCache;
         private FFmpegCLIManager ffmpeg;
+        private SystemAudioLoopbackCapture loopbackCapture;
         private bool stopRequested;
 
         public ScreenRecorder(ScreenRecordOutput outputType, ScreenRecordingOptions options, Screenshot screenshot, Rectangle captureRectangle)
@@ -151,7 +152,21 @@ namespace ShareX.ScreenCaptureLib
 
                 if (OutputType == ScreenRecordOutput.FFmpeg)
                 {
-                    ffmpeg.Run(Options.GetFFmpegCommands());
+                    try
+                    {
+                        if (FFmpegCaptureDevice.IsWasapiLoopback(Options.FFmpeg.AudioSource))
+                        {
+                            loopbackCapture = new SystemAudioLoopbackCapture();
+                            loopbackCapture.Start(); // must exist before FFmpeg opens the audio pipe
+                        }
+
+                        ffmpeg.Run(Options.GetFFmpegCommands());
+                    }
+                    finally
+                    {
+                        loopbackCapture?.Dispose();
+                        loopbackCapture = null;
+                    }
                 }
                 else
                 {
@@ -172,6 +187,11 @@ namespace ShareX.ScreenCaptureLib
                     Stopwatch timer = Stopwatch.StartNew();
 
                     Image img = screenshot.CaptureRectangle(CaptureRectangle);
+
+                    if (screenshot.CaptureOverlays && img is Bitmap bmp)
+                    {
+                        OverlayCapture.CompositeOverlays(bmp, CaptureRectangle);
+                    }
                     //DebugHelper.WriteLine("Screen capture: " + (int)timer.ElapsedMilliseconds);
 
                     imgCache.AddImageAsync(img);

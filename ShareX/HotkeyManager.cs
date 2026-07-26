@@ -26,7 +26,9 @@
 using ShareX.HelpersLib;
 using ShareX.Properties;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace ShareX
@@ -42,33 +44,119 @@ namespace ShareX
         public HotkeyTriggerEventHandler HotkeyTrigger;
         public HotkeysToggledEventHandler HotkeysToggledTrigger;
 
-        private HotkeyForm hotkeyForm;
+        private const int HookRepeatLimit = 1000;
 
-        public HotkeyManager(HotkeyForm form)
+        private readonly HotkeyInputManager inputManager;
+        private readonly SynchronizationContext uiContext;
+
+        // Hotkeys are matched primarily through a low-level keyboard hook
+        // (WH_KEYBOARD_LL) running on the dedicated hotkey thread, the same
+        // approach tools like ProcessFlipper use. Games such as Star Citizen
+        // swallow RegisterHotKey hotkeys even though registration succeeds,
+        // while the low-level hook still sees every keystroke. RegisterHotKey
+        // is kept as a secondary path and deduplicated via a shared repeat
+        // limit timer.
+        private readonly Stopwatch hookRepeatTimer = Stopwatch.StartNew();
+
+        public HotkeyManager()
         {
-            hotkeyForm = form;
-            hotkeyForm.HotkeyPress += HotkeyForm_HotkeyPress;
-            hotkeyForm.FormClosed += HotkeyForm_FormClosed;
+            uiContext = SynchronizationContext.Current;
+
+            inputManager = new HotkeyInputManager();
+            inputManager.HotkeyPress += InputManager_HotkeyPress;
+            inputManager.KeyDown += InputManager_KeyDown;
+
+            Application.ApplicationExit += Application_ApplicationExit;
         }
 
-        private void HotkeyForm_HotkeyPress(ushort id, Keys key, Modifiers modifier)
+        private void Application_ApplicationExit(object sender, System.EventArgs e)
+        {
+            inputManager.Dispose();
+        }
+
+        private void InputManager_HotkeyPress(ushort id, Keys key, Modifiers modifier)
         {
             if (!IgnoreHotkeys && (!Program.Settings.DisableHotkeysOnFullscreen || !CaptureHelpers.IsActiveWindowFullscreen()))
             {
-                HotkeySettings hotkeySetting = Hotkeys.Find(x => x.HotkeyInfo.ID == id);
+                HotkeySettings hotkeySetting = Hotkeys?.Find(x => x.HotkeyInfo.ID == id);
 
-                if (hotkeySetting != null)
+                if (hotkeySetting != null && CheckRepeatLimit())
                 {
-                    OnHotkeyTrigger(hotkeySetting);
+                    TriggerOnUIThread(hotkeySetting);
                 }
             }
         }
 
-        private void HotkeyForm_FormClosed(object sender, FormClosedEventArgs e)
+        private void InputManager_KeyDown(object sender, KeyEventArgs e)
         {
-            if (hotkeyForm != null && !hotkeyForm.IsDisposed)
+            if (IgnoreHotkeys || Hotkeys == null || (Program.Settings.DisableHotkeysOnFullscreen && CaptureHelpers.IsActiveWindowFullscreen()))
             {
-                UnregisterAllHotkeys(false);
+                return;
+            }
+
+            // Read the physical modifier state; Control.ModifierKeys is
+            // message-queue relative and unreliable while a game owns input.
+            bool control = IsAsyncKeyDown(Keys.ControlKey);
+            bool shift = IsAsyncKeyDown(Keys.ShiftKey);
+            bool alt = IsAsyncKeyDown(Keys.Menu);
+            bool win = IsAsyncKeyDown(Keys.LWin) || IsAsyncKeyDown(Keys.RWin);
+
+            HotkeySettings match = null;
+
+            foreach (HotkeySettings hotkeySetting in Hotkeys)
+            {
+                HotkeyInfo info = hotkeySetting.HotkeyInfo;
+
+                // Only match hotkeys that are currently active (i.e. were
+                // attempted for registration; toggled-off hotkeys are
+                // NotConfigured).
+                if (info.Status != HotkeyStatus.Registered && info.Status != HotkeyStatus.Failed)
+                {
+                    continue;
+                }
+
+                if (info.KeyCode == e.KeyCode && info.Control == control && info.Shift == shift && info.Alt == alt && info.Win == win)
+                {
+                    match = hotkeySetting;
+                    break;
+                }
+            }
+
+            if (match != null && CheckRepeatLimit())
+            {
+                // Swallow the keystroke so the focused game does not also
+                // react to the hotkey.
+                e.SuppressKeyPress = true;
+                DebugHelper.WriteLine("Hotkey triggered via keyboard hook. " + match);
+                TriggerOnUIThread(match);
+            }
+        }
+
+        private static bool IsAsyncKeyDown(Keys key)
+        {
+            return (NativeMethods.GetAsyncKeyState((int)key) & 0x8000) != 0;
+        }
+
+        private bool CheckRepeatLimit()
+        {
+            if (hookRepeatTimer.ElapsedMilliseconds >= HookRepeatLimit)
+            {
+                hookRepeatTimer.Restart();
+                return true;
+            }
+
+            return false;
+        }
+
+        private void TriggerOnUIThread(HotkeySettings hotkeySetting)
+        {
+            if (uiContext != null)
+            {
+                uiContext.Post(_ => OnHotkeyTrigger(hotkeySetting), null);
+            }
+            else
+            {
+                OnHotkeyTrigger(hotkeySetting);
             }
         }
 
@@ -102,7 +190,7 @@ namespace ShareX
 
                 if (hotkeySetting.HotkeyInfo.Status != HotkeyStatus.Registered && hotkeySetting.HotkeyInfo.IsValidHotkey)
                 {
-                    hotkeyForm.RegisterHotkey(hotkeySetting.HotkeyInfo);
+                    inputManager.RegisterHotkey(hotkeySetting.HotkeyInfo);
 
                     if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Registered)
                     {
@@ -145,7 +233,7 @@ namespace ShareX
         {
             if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.Registered)
             {
-                hotkeyForm.UnregisterHotkey(hotkeySetting.HotkeyInfo);
+                inputManager.UnregisterHotkey(hotkeySetting.HotkeyInfo);
 
                 if (hotkeySetting.HotkeyInfo.Status == HotkeyStatus.NotConfigured)
                 {

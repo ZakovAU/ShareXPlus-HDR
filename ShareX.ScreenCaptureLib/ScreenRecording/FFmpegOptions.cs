@@ -34,7 +34,7 @@ namespace ShareX.ScreenCaptureLib
         public bool OverrideCLIPath { get; set; } = false;
         public string CLIPath { get; set; } = "";
         public string VideoSource { get; set; } = FFmpegCaptureDevice.GDIGrab.Value;
-        public string AudioSource { get; set; } = FFmpegCaptureDevice.None.Value;
+        public string AudioSource { get; set; } = FFmpegCaptureDevice.WasapiLoopback.Value;
         public FFmpegVideoCodec VideoCodec { get; set; } = FFmpegVideoCodec.libx264;
         public FFmpegAudioCodec AudioCodec { get; set; } = FFmpegAudioCodec.libvoaacenc;
         public string UserArgs { get; set; } = "";

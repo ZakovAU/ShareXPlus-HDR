@@ -351,7 +351,7 @@ namespace ShareX
 
             if (Program.HotkeyManager == null)
             {
-                Program.HotkeyManager = new HotkeyManager(this);
+                Program.HotkeyManager = new HotkeyManager();
                 Program.HotkeyManager.HotkeyTrigger += HandleHotkeys;
             }
 

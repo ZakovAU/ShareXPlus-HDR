@@ -1392,6 +1392,8 @@ namespace ShareX.ScreenCaptureLib
 
             if (DrawingShapes.Length > 0 || EffectShapes.Length > 0)
             {
+                // Annotations are drawn in SDR, so whatever HDR pixels the capture came with no
+                // longer describe the output and are dropped by not propagating them.
                 IsRenderingOutput = true;
                 RenderOffset = offset;
 
@@ -1420,6 +1422,10 @@ namespace ShareX.ScreenCaptureLib
 
                 RenderOffset = Point.Empty;
                 IsRenderingOutput = false;
+            }
+            else
+            {
+                HdrImageRegistry.Propagate(bmp, bmpOutput);
             }
 
             return bmpOutput;

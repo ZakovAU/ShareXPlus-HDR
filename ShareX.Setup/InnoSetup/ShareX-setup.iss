@@ -7,7 +7,7 @@
 #define MyAppFilePath MyAppReleaseDirectory + "\" + MyAppFileName
 #define MyAppVersion GetStringFileInfo(MyAppFilePath, "ProductVersion")
 #define MyAppPublisher "ShareX Team"
-#define MyAppURL "https://getsharex.com"
+#define MyAppURL "https://github.com/ZakovAU/ShareX-HDR"
 #define MyAppId "82E6AC09-0FEF-4390-AD9F-0DD3F5561EFC"
 
 [Setup]

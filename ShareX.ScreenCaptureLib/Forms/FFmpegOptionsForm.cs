@@ -206,6 +206,7 @@ namespace ShareX.ScreenCaptureLib
 
                 cbAudioSource.Items.Clear();
                 cbAudioSource.Items.Add(FFmpegCaptureDevice.None);
+                cbAudioSource.Items.Add(FFmpegCaptureDevice.WasapiLoopback);
 
                 if (devices != null)
                 {
@@ -232,10 +233,10 @@ namespace ShareX.ScreenCaptureLib
                     }
                 }
 
-                if (selectDevices && cbAudioSource.Items.Cast<FFmpegCaptureDevice>().
-                    Any(x => x.Value.Equals(FFmpegCaptureDevice.VirtualAudioCapturer.Value, StringComparison.OrdinalIgnoreCase)))
+                if (selectDevices)
                 {
-                    Options.FFmpeg.AudioSource = FFmpegCaptureDevice.VirtualAudioCapturer.Value;
+                    // System audio loopback works without any driver, so prefer it
+                    Options.FFmpeg.AudioSource = FFmpegCaptureDevice.WasapiLoopback.Value;
                 }
                 else if (!cbAudioSource.Items.Cast<FFmpegCaptureDevice>().Any(x => x.Value.Equals(Options.FFmpeg.AudioSource, StringComparison.OrdinalIgnoreCase)))
                 {

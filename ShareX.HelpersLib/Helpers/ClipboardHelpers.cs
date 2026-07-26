@@ -38,6 +38,8 @@ namespace ShareX.HelpersLib
     {
         public const string FORMAT_PNG = "PNG";
         public const string FORMAT_17 = "Format17";
+        public const string FORMAT_AVIF = "AVIF";
+        public const string FORMAT_AVIF_MIME = "image/avif";
 
         private const int RetryTimes = 20;
         private const int RetryDelay = 100;
@@ -129,6 +131,63 @@ namespace ShareX.HelpersLib
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Puts an HDR capture on the clipboard as AVIF while still offering the usual SDR formats,
+        /// so applications that understand AVIF get the full dynamic range and everything else
+        /// pastes the tonemapped image as before.
+        /// </summary>
+        public static bool CopyImageWithAvif(Image img, byte[] avifData, string fileName = null)
+        {
+            if (avifData == null || avifData.Length == 0)
+            {
+                return CopyImage(img, fileName);
+            }
+
+            try
+            {
+                using (Bitmap bmpNonTransparent = img.CreateEmptyBitmap(PixelFormat.Format24bppRgb))
+                using (MemoryStream msAvif = new MemoryStream(avifData, false))
+                using (MemoryStream msAvifMime = new MemoryStream(avifData, false))
+                using (MemoryStream msPNG = new MemoryStream())
+                using (MemoryStream msDIB = new MemoryStream())
+                {
+                    IDataObject dataObject = new DataObject();
+
+                    using (Graphics g = Graphics.FromImage(bmpNonTransparent))
+                    {
+                        g.Clear(Color.White);
+                        g.DrawImage(img, 0, 0, img.Width, img.Height);
+                    }
+
+                    dataObject.SetData(DataFormats.Bitmap, true, bmpNonTransparent);
+
+                    // Both spellings, since applications disagree on which one they look for.
+                    dataObject.SetData(FORMAT_AVIF, false, msAvif);
+                    dataObject.SetData(FORMAT_AVIF_MIME, false, msAvifMime);
+
+                    img.Save(msPNG, ImageFormat.Png);
+                    dataObject.SetData(FORMAT_PNG, false, msPNG);
+
+                    byte[] dibData = ClipboardHelpersEx.ConvertToDib(img);
+                    msDIB.Write(dibData, 0, dibData.Length);
+                    dataObject.SetData(DataFormats.Dib, false, msDIB);
+
+                    if (!string.IsNullOrEmpty(fileName))
+                    {
+                        string htmlFragment = GenerateHTMLFragment($"<img src=\"{fileName}\"/>");
+                        dataObject.SetData(DataFormats.Html, htmlFragment);
+                    }
+
+                    return CopyData(dataObject);
+                }
+            }
+            catch (Exception e)
+            {
+                DebugHelper.WriteException(e, "Clipboard copy HDR image failed, falling back to SDR copy.");
+                return CopyImage(img, fileName);
+            }
         }
 
         private static bool CopyImageDefault(Image img)

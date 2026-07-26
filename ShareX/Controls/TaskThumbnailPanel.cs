@@ -370,7 +370,9 @@ namespace ShareX
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    if (FileHelpers.IsVideoFile(filePath))
+                    // Videos, and image formats GDI+ cannot decode such as AVIF, still get a real
+                    // preview if the Windows shell knows how to read them.
+                    if (FileHelpers.IsVideoFile(filePath) || (FileHelpers.IsImageFile(filePath) && File.Exists(filePath)))
                     {
                         Bitmap bmpResult = NativeMethods.GetFileThumbnail(filePath, ThumbnailSize);
 

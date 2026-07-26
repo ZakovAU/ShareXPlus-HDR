@@ -1292,7 +1292,7 @@
             // nudCaptureHDRNits
             //
             resources.ApplyResources(nudCaptureHDRNits, "nudCaptureHDRNits");
-            nudCaptureHDRNits.Maximum = new decimal(new int[] { 400, 0, 0, 0 });
+            nudCaptureHDRNits.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
             nudCaptureHDRNits.Minimum = new decimal(new int[] { 80, 0, 0, 0 });
             nudCaptureHDRNits.Name = "nudCaptureHDRNits";
             nudCaptureHDRNits.Value = new decimal(new int[] { 203, 0, 0, 0 });

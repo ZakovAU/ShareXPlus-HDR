@@ -211,8 +211,11 @@ float4 main(PS_INPUT input) : SV_Target
 
         if (implied_tonemap_type != SKIV_TONEMAP_TYPE_NONE && (!isHDR))
         {
+            // Output target is 8-bit sRGB (SDR): roll the content range off to
+            // SDR white (1.0 scRGB == 80 nits). Content at or below SDR white is
+            // left untouched, only super-SDR highlights are compressed.
             implied_tonemap_type = SKIV_TONEMAP_TYPE_MAP_CLL_TO_DISPLAY;
-            dML = LinearToPQY(1.5f);
+            dML = LinearToPQY(1.0f);
         }
 
         else if (implied_tonemap_type == SKIV_TONEMAP_TYPE_MAP_CLL_TO_DISPLAY && sdr_reference_white > 0)

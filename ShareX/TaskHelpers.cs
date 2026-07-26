@@ -372,9 +372,38 @@ namespace ShareX
 
         public static ImageData PrepareImage(Image img, TaskSettings taskSettings)
         {
+            return PrepareImage(img, taskSettings, null);
+        }
+
+        /// <summary>
+        /// Turns the image into the bytes that get written or uploaded. Captures that still carry
+        /// HDR pixels are written as AVIF so the extra range survives; <paramref name="hdrAvifData"/>
+        /// lets a caller that already encoded them (for the clipboard) avoid a second encode.
+        /// </summary>
+        public static ImageData PrepareImage(Image img, TaskSettings taskSettings, byte[] hdrAvifData)
+        {
             ImageData imageData = new ImageData();
+
+            if (hdrAvifData == null && HdrAvifHelper.ShouldUseAvif(img, taskSettings))
+            {
+                hdrAvifData = HdrAvifHelper.EncodeHdr(img, taskSettings);
+            }
+
+            if (hdrAvifData != null)
+            {
+                imageData.ImageStream = new MemoryStream(hdrAvifData);
+                imageData.ImageFormat = EImageFormat.AVIF;
+                return imageData;
+            }
+
             imageData.ImageStream = SaveImageAsStream(img, taskSettings.ImageSettings.ImageFormat, taskSettings);
             imageData.ImageFormat = taskSettings.ImageSettings.ImageFormat;
+
+            if (taskSettings.ImageSettings.ImageFormat == EImageFormat.AVIF)
+            {
+                // AVIF has no fallback beyond itself; do not let the auto JPEG rule swap it out.
+                return imageData;
+            }
 
             if (taskSettings.ImageSettings.ImageAutoUseJPEG && taskSettings.ImageSettings.ImageFormat != EImageFormat.JPEG &&
                 imageData.ImageStream.Length > taskSettings.ImageSettings.ImageAutoUseJPEGSize * 1000)
@@ -424,6 +453,21 @@ namespace ShareX
 
         public static MemoryStream SaveImageAsStream(Image img, EImageFormat imageFormat, TaskSettings taskSettings)
         {
+            if (imageFormat == EImageFormat.AVIF)
+            {
+                // AVIF needs ffmpeg and the per-task encoder settings, so it cannot go through the
+                // GDI+ path below.
+                MemoryStream avif = HdrAvifHelper.Encode(img, taskSettings);
+
+                if (avif != null)
+                {
+                    return avif;
+                }
+
+                DebugHelper.WriteLine("AVIF encoding is unavailable, saving as PNG instead.");
+                imageFormat = EImageFormat.PNG;
+            }
+
             return SaveImageAsStream(img, imageFormat, taskSettings.ImageSettings.ImagePNGBitDepth,
                 taskSettings.ImageSettings.ImageJPEGQuality, taskSettings.ImageSettings.ImageGIFQuality);
         }
@@ -462,6 +506,11 @@ namespace ShareX
                         break;
                     case EImageFormat.TIFF:
                         img.Save(ms, ImageFormat.Tiff);
+                        break;
+                    case EImageFormat.AVIF:
+                        // Reached only by callers that have no TaskSettings to pull ffmpeg from.
+                        DebugHelper.WriteLine("AVIF requested without task settings, saving as PNG instead.");
+                        ImageHelpers.SavePNG(img, ms, pngBitDepth);
                         break;
                 }
             }

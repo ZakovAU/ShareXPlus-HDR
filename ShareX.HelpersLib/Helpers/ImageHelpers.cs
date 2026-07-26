@@ -254,7 +254,9 @@ namespace ShareX.HelpersLib
         {
             if (bmp != null && rect.X >= 0 && rect.Y >= 0 && rect.Width > 0 && rect.Height > 0 && new Rectangle(0, 0, bmp.Width, bmp.Height).Contains(rect))
             {
-                return bmp.Clone(rect, bmp.PixelFormat);
+                Bitmap cropped = bmp.Clone(rect, bmp.PixelFormat);
+                HdrImageRegistry.Propagate(bmp, cropped, rect);
+                return cropped;
             }
 
             return null;

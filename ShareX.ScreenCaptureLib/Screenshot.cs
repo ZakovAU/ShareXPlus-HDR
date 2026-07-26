@@ -44,6 +44,7 @@ namespace ShareX.ScreenCaptureLib
         public bool CaptureShadow { get; set; } = false;
         public int ShadowOffset { get; set; } = 20;
         public bool AutoHideTaskbar { get; set; } = false;
+        public bool CaptureOverlays { get; set; } = true;
         public bool UseWinRTCaptureAPI { get; set; } = true;
         public HdrSettings HdrSettings { get; set; } = new HdrSettings();
 
@@ -70,7 +71,14 @@ namespace ShareX.ScreenCaptureLib
         {
             Rectangle bounds = CaptureHelpers.GetScreenBounds();
 
-            return CaptureRectangle(bounds);
+            Bitmap bmp = CaptureRectangle(bounds);
+
+            if (CaptureOverlays && bmp != null)
+            {
+                OverlayCapture.CompositeOverlays(bmp, bounds);
+            }
+
+            return bmp;
         }
 
         public Bitmap CaptureWindow(IntPtr handle)
@@ -122,7 +130,14 @@ namespace ShareX.ScreenCaptureLib
         {
             Rectangle bounds = CaptureHelpers.GetActiveScreenBounds();
 
-            return CaptureRectangle(bounds);
+            Bitmap bmp = CaptureRectangle(bounds);
+
+            if (CaptureOverlays && bmp != null)
+            {
+                OverlayCapture.CompositeOverlays(bmp, bounds);
+            }
+
+            return bmp;
         }
 
         private Bitmap CaptureRectangleNative(Rectangle rect, bool captureCursor = false)
@@ -141,12 +156,21 @@ namespace ShareX.ScreenCaptureLib
             // TODO: some setting?
             if (UseWinRTCaptureAPI)
             {
-                // TODO: only in debug?
-                SharpGen.Runtime.Configuration.EnableObjectTracking = true;
-                SharpGen.Runtime.Configuration.EnableReleaseOnFinalizer = true;
-                return CaptureRectangleDirect3D11(handle, rect, captureCursor);
+                try
+                {
+                    // TODO: only in debug?
+                    SharpGen.Runtime.Configuration.EnableObjectTracking = true;
+                    SharpGen.Runtime.Configuration.EnableReleaseOnFinalizer = true;
+                    return CaptureRectangleDirect3D11(handle, rect, captureCursor);
+                }
+                catch (Exception e)
+                {
+                    // Desktop duplication can fail (unsupported driver/session, device
+                    // removed, etc.) - fall back to GDI so the user never gets a black image.
+                    DebugHelper.WriteException(e, "Direct3D11 capture failed, falling back to GDI.");
+                }
             }
-            else
+
             {
                 IntPtr hdcSrc = NativeMethods.GetWindowDC(handle);
                 IntPtr hdcDest = NativeMethods.CreateCompatibleDC(hdcSrc);

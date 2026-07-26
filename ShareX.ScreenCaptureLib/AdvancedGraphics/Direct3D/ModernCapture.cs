@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using System.Threading;
+using ShareX.HelpersLib;
 using ShareX.ScreenCaptureLib.AdvancedGraphics.Direct3D.Shaders;
 using ShareX.ScreenCaptureLib.AdvancedGraphics.GDI;
 using SharpGen.Runtime;
+using Veldrid;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
+using Vortice.DXGI.Debug;
 using Vortice.Mathematics;
 
 namespace ShareX.ScreenCaptureLib.AdvancedGraphics.Direct3D;
@@ -132,9 +135,10 @@ public class ModernCapture : IDisposable, DisposableCache
             {
                 if (!forceRecreate)
                 {
-                    if (Settings.ReuseBuffers && state.Staging != null) return state;
-                    state.Staging?.Dispose();
-                    state.Staging = CreateStagingBuffer(state.Device, state.Dup.Description);
+                    // The staging buffer is torn down after every capture unless ReuseBuffers is on,
+                    // so recreate it only when it is actually gone. That keeps repeat calls within a
+                    // single capture free.
+                    state.Staging ??= CreateStagingBuffer(state.Device, state.Dup.Description);
                     return state;
                 }
 
@@ -148,8 +152,20 @@ public class ModernCapture : IDisposable, DisposableCache
             // Ask for native format first, SDR fallback second
             var fmts = new[] { Format.R16G16B16A16_Float, Format.B8G8R8A8_UNorm };
 
-            using IDXGIOutput5 output5 = screen.Output.QueryInterface<IDXGIOutput5>();
-            var dup = output5.DuplicateOutput1(screen.Device, fmts);
+            IDXGIOutputDuplication dup;
+            try
+            {
+                using IDXGIOutput5 output5 = screen.Output.QueryInterface<IDXGIOutput5>();
+                dup = output5.DuplicateOutput1(screen.Device, fmts);
+            }
+            catch (SharpGenException)
+            {
+                // DuplicateOutput1 fails with DXGI_ERROR_UNSUPPORTED on some
+                // drivers/sessions; the older DuplicateOutput hands us the
+                // desktop in its native format (R16G16B16A16_Float on HDR desktops).
+                using IDXGIOutput1 output1 = screen.Output.QueryInterface<IDXGIOutput1>();
+                dup = output1.DuplicateOutput(screen.Device);
+            }
 
             var desc = dup.Description;
             bool isHdr = desc.ModeDescription.Format == Format.R16G16B16A16_Float;
@@ -186,6 +202,7 @@ public class ModernCapture : IDisposable, DisposableCache
         public ID3D11Device Device;
         public ID3D11DeviceContext Context;
         public Rectangle SrcRect;
+        public bool IsHdr;
     }
 
     public Bitmap CaptureAndProcess(HdrSettings hdrSettings, ModernCaptureItemDescription item)
@@ -239,6 +256,7 @@ public class ModernCapture : IDisposable, DisposableCache
                     DeviceAccess = screenAccess.Context,
                     Context = ctx,
                     SrcRect = srcRect,
+                    IsHdr = GetOrCreateDup(r.MonitorInfo.Hmon).IsHdr,
                 });
             }
 
@@ -259,6 +277,22 @@ public class ModernCapture : IDisposable, DisposableCache
 
             canvasGpu = Direct3DUtils.CreateCanvasTexture((uint)W, (uint)H, commonDevice);
             canvasContext = commonCtx;
+
+            // (C) When any monitor in this capture is running HDR, build a second canvas that keeps
+            // the pixels as they came off the desktop so we can write real HDR output later.
+            ID3D11Texture2D hdrCanvasGpu = null;
+            byte[] hdrPixels = null;
+            List<Rectangle> hdrDestRects = null;
+            List<ImageInfo> hdrRegionInfos = null;
+
+            if (Settings.KeepHdrPixels && perRegionState.Exists(s => s.IsHdr))
+            {
+                // The managed buffer is left until we know the capture actually contains HDR
+                // content, because at 4K it is 66 MB of large object heap for nothing.
+                hdrCanvasGpu = Direct3DUtils.CreateHdrCanvasTexture((uint)W, (uint)H, commonDevice);
+                hdrDestRects = [];
+                hdrRegionInfos = [];
+            }
 
             // (D) Now actually do one pass per region:
             foreach (var state in perRegionState)
@@ -324,12 +358,21 @@ public class ModernCapture : IDisposable, DisposableCache
                     if (!forceCpuTonemap)
                     {
                         // GPU path: convert HDR staging → B8G8R8A8_UNorm GPU texture
-                        ldrSource = Tonemapping.TonemapOnGpu(Settings, state.Region, state.DeviceAccess, dupState.Staging, frameTex, canvasGpu, destBox, srcBox);
+                        ldrSource = Tonemapping.TonemapOnGpu(Settings, state.Region, state.DeviceAccess, dupState.Staging, frameTex, canvasGpu, destBox, srcBox,
+                            out ImageInfo regionInfo);
+                        hdrRegionInfos?.Add(regionInfo);
                     }
                     else
                     {
                         // CPU path: convert HDR staging → B8G8R8A8_UNorm STAGING
                         ldrSource = Tonemapping.TonemapOnCpu(Settings, state.Region, state.DeviceAccess, frameTex);
+                    }
+
+                    if (hdrCanvasGpu != null)
+                    {
+                        // Same format on both sides, so the untonemapped pixels move straight across.
+                        canvasContext.CopySubresourceRegion(hdrCanvasGpu, 0, (uint)destBox.Left, (uint)destBox.Top, 0, frameTex, 0, srcBox);
+                        hdrDestRects.Add(new Rectangle(destBox.Left, destBox.Top, r.DestGdiRect.Width, r.DestGdiRect.Height));
                     }
                 }
                 else
@@ -344,6 +387,15 @@ public class ModernCapture : IDisposable, DisposableCache
                         0, // source mip
                         srcBox
                     );
+
+                    if (hdrCanvasGpu != null)
+                    {
+                        // An SDR monitor sharing the capture with an HDR one. Its 8 bit sRGB pixels
+                        // cannot be copied into a float canvas by the GPU, so lift them into scRGB here.
+                        hdrPixels ??= new byte[(long)W * H * HdrImageData.BytesPerPixel];
+                        ConvertSdrRegionToScRgb(canvasContext, dupState.Staging, srcBox, hdrPixels, W,
+                            destBox.Left, destBox.Top);
+                    }
                 }
                 dupState.ReleaseFrame(!Settings.ReuseBuffers);
             } // end per‐region loop
@@ -364,6 +416,23 @@ public class ModernCapture : IDisposable, DisposableCache
             );
             canvasContext.Unmap(stagingCanvas, 0);
 
+            if (hdrCanvasGpu != null)
+            {
+                if (hdrRegionInfos.Exists(i => i.Hdr))
+                {
+                    hdrPixels ??= new byte[(long)W * H * HdrImageData.BytesPerPixel];
+                    ReadBackHdrCanvas(canvasContext, hdrCanvasGpu, hdrDestRects, hdrPixels, W);
+                    AttachHdrPayload(finalBitmap, hdrPixels, W, H, hdrRegionInfos);
+                }
+                else
+                {
+                    // HDR desktop, but nothing in frame is brighter than SDR white. Keeping the
+                    // pixels would just cost memory and force an AVIF encode for no benefit.
+                    Console.WriteLine("CaptureAndProcess(): no HDR content in frame, keeping SDR output only.");
+                }
+            }
+
+            hdrCanvasGpu?.Dispose();
             canvasGpu.Dispose();
             stagingCanvas.Dispose();
 #if DEBUG
@@ -391,6 +460,153 @@ public class ModernCapture : IDisposable, DisposableCache
             }
             this.ReleaseCachedValues(Settings);
         }
+    }
+
+    /// <summary>
+    /// Pulls the half float canvas back into managed memory, but only the rectangles an HDR monitor
+    /// actually wrote, so any SDR regions already converted in place survive.
+    /// </summary>
+    private static void ReadBackHdrCanvas(ID3D11DeviceContext ctx, ID3D11Texture2D hdrCanvasGpu, List<Rectangle> rects, byte[] dest, int canvasWidth)
+    {
+        using var hdrStaging = Direct3DUtils.CreateStagingFor(hdrCanvasGpu);
+        ctx.CopyResource(hdrStaging, hdrCanvasGpu);
+
+        var mapped = ctx.Map(hdrStaging, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
+
+        try
+        {
+            int destStride = canvasWidth * HdrImageData.BytesPerPixel;
+
+            unsafe
+            {
+                byte* src = (byte*)mapped.DataPointer;
+
+                fixed (byte* destBase = dest)
+                {
+                    foreach (Rectangle rect in rects)
+                    {
+                        int rowBytes = rect.Width * HdrImageData.BytesPerPixel;
+
+                        for (int y = 0; y < rect.Height; y++)
+                        {
+                            Buffer.MemoryCopy(
+                                src + ((rect.Y + y) * (long)mapped.RowPitch) + (rect.X * HdrImageData.BytesPerPixel),
+                                destBase + ((rect.Y + y) * (long)destStride) + (rect.X * HdrImageData.BytesPerPixel),
+                                rowBytes,
+                                rowBytes);
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            ctx.Unmap(hdrStaging, 0);
+        }
+    }
+
+    /// <summary>
+    /// Lifts an SDR monitor's 8 bit sRGB pixels into the scRGB half float canvas, placing SDR white
+    /// at the configured HDR reference white so the region does not look washed out next to real
+    /// HDR content.
+    /// </summary>
+    private void ConvertSdrRegionToScRgb(ID3D11DeviceContext ctx, ID3D11Texture2D sdrStaging, Box srcBox, byte[] dest, int canvasWidth,
+        int destX, int destY)
+    {
+        float whiteScale = Math.Max(1f, Settings.HdrBrightnessNits) / 80f;
+        ushort[] lut = BuildSrgbToScRgbLut(whiteScale);
+        const ushort halfOne = 0x3C00;
+
+        var mapped = ctx.Map(sdrStaging, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
+
+        try
+        {
+            int width = srcBox.Right - srcBox.Left;
+            int height = srcBox.Bottom - srcBox.Top;
+            int destStride = canvasWidth * HdrImageData.BytesPerPixel;
+
+            unsafe
+            {
+                byte* srcBase = (byte*)mapped.DataPointer;
+
+                for (int y = 0; y < height; y++)
+                {
+                    // Desktop duplication hands out B8G8R8A8_UNorm.
+                    byte* srcRow = srcBase + ((srcBox.Top + y) * (long)mapped.RowPitch) + (srcBox.Left * 4);
+                    int destOffset = ((destY + y) * destStride) + (destX * HdrImageData.BytesPerPixel);
+
+                    for (int x = 0; x < width; x++)
+                    {
+                        WriteHalf(dest, destOffset, lut[srcRow[2]]);
+                        WriteHalf(dest, destOffset + 2, lut[srcRow[1]]);
+                        WriteHalf(dest, destOffset + 4, lut[srcRow[0]]);
+                        WriteHalf(dest, destOffset + 6, halfOne);
+
+                        srcRow += 4;
+                        destOffset += HdrImageData.BytesPerPixel;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            ctx.Unmap(sdrStaging, 0);
+        }
+    }
+
+    private static ushort[] BuildSrgbToScRgbLut(float whiteScale)
+    {
+        var lut = new ushort[256];
+
+        for (int i = 0; i < lut.Length; i++)
+        {
+            float encoded = i / 255f;
+            float linear = encoded <= 0.04045f ? encoded / 12.92f : MathF.Pow((encoded + 0.055f) / 1.055f, 2.4f);
+            lut[i] = BitConverter.HalfToUInt16Bits((Half)(linear * whiteScale));
+        }
+
+        return lut;
+    }
+
+    private static void WriteHalf(byte[] buffer, int offset, ushort bits)
+    {
+        buffer[offset] = (byte)bits;
+        buffer[offset + 1] = (byte)(bits >> 8);
+    }
+
+    private void AttachHdrPayload(Bitmap bitmap, byte[] pixels, int width, int height, List<ImageInfo> regionInfos)
+    {
+        if (bitmap == null || pixels == null)
+        {
+            return;
+        }
+
+        var metadata = new HdrImageMetadata
+        {
+            IsHdrDisplay = true,
+            MinNits = float.MaxValue
+        };
+
+        float avgTotal = 0;
+
+        foreach (ImageInfo info in regionInfos)
+        {
+            metadata.MaxNits = Math.Max(metadata.MaxNits, info.MaxNits);
+            metadata.MinNits = Math.Min(metadata.MinNits, info.MinNits);
+            metadata.P99Nits = Math.Max(metadata.P99Nits, info.P99Nits);
+            metadata.MaxCllNits = Math.Max(metadata.MaxCllNits, info.MaxCLL * 80f);
+            metadata.HasHdrContent |= info.Hdr;
+            avgTotal += info.AvgNits;
+        }
+
+        metadata.AvgNits = avgTotal / regionInfos.Count;
+
+        if (metadata.MinNits == float.MaxValue)
+        {
+            metadata.MinNits = 0;
+        }
+
+        HdrImageRegistry.Attach(bitmap, new HdrImageData(width, height, pixels, metadata));
     }
 
     private void InitializeDevice(DeviceAccess deviceAccess)
@@ -440,8 +656,11 @@ public class ModernCapture : IDisposable, DisposableCache
         _duplications.Clear();
         deviceCache?.Dispose();
         deviceCache = null;
+        idxgiFactory1?.Dispose();
+        idxgiFactory1 = null;
 #if DEBUG
         debug?.Dispose();
+        debug = null;
 #endif
     }
 

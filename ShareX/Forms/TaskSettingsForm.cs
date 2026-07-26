@@ -45,9 +45,117 @@ namespace ShareX
         private ToolStripDropDownItem tsmiImageFileUploaders, tsmiTextFileUploaders;
         private bool loaded;
 
+        private System.Windows.Forms.ComboBox cbPerformanceMode;
+        private System.Windows.Forms.Label lblPerformanceMode;
+
+        private void InitializeHdrPerformanceModeControl()
+        {
+            // Programmatically added (not in the designer) HDR performance setting,
+            // placed right under the other HDR controls.
+            lblPerformanceMode = new System.Windows.Forms.Label
+            {
+                AutoSize = true,
+                Text = "HDR performance mode:",
+                Location = new System.Drawing.Point(cbUseHDR.Location.X, nudCaptureHDRNits.Location.Y + nudCaptureHDRNits.Height + 8)
+            };
+
+            cbPerformanceMode = new System.Windows.Forms.ComboBox
+            {
+                DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList,
+                Location = new System.Drawing.Point(lblPerformanceMode.Location.X + 3, lblPerformanceMode.Location.Y + 18),
+                Width = 150
+            };
+            cbPerformanceMode.SelectedIndexChanged += cbPerformanceMode_SelectedIndexChanged;
+
+            cbUseHDR.Parent.Controls.Add(lblPerformanceMode);
+            cbUseHDR.Parent.Controls.Add(cbPerformanceMode);
+        }
+
+        private System.Windows.Forms.CheckBox cbImageAutoUseAVIFForHDR, cbImageAVIFChromaSubsampling;
+        private System.Windows.Forms.NumericUpDown nudImageAVIFQuality, nudImageAVIFSpeed;
+        private System.Windows.Forms.Label lblImageAVIFQuality, lblImageAVIFSpeed, lblImageAVIFHint;
+
+        private void InitializeAvifControls()
+        {
+            // Programmatically added (not in the designer) AVIF settings, in the free space below
+            // the file exist action on the image tab.
+            int left = cbImageAutoUseJPEG.Location.X;
+            int top = cbImageFileExist.Location.Y + cbImageFileExist.Height + 16;
+
+            cbImageAutoUseAVIFForHDR = new System.Windows.Forms.CheckBox
+            {
+                AutoSize = true,
+                Text = "Save captures that contain HDR as AVIF (keeps the extra brightness range)",
+                Location = new System.Drawing.Point(left, top),
+                UseVisualStyleBackColor = true
+            };
+            cbImageAutoUseAVIFForHDR.CheckedChanged += cbImageAutoUseAVIFForHDR_CheckedChanged;
+
+            lblImageAVIFHint = new System.Windows.Forms.Label
+            {
+                AutoSize = true,
+                Text = "Requires ffmpeg, the same one the screen recorder uses.",
+                Location = new System.Drawing.Point(left + 20, top + 24)
+            };
+
+            lblImageAVIFQuality = new System.Windows.Forms.Label
+            {
+                AutoSize = true,
+                Text = "AVIF quality (0 best, 63 worst):",
+                Location = new System.Drawing.Point(left + 20, top + 52)
+            };
+
+            nudImageAVIFQuality = new System.Windows.Forms.NumericUpDown
+            {
+                Minimum = 0,
+                Maximum = 63,
+                Width = 90,
+                Location = new System.Drawing.Point(left + 240, top + 49),
+                TextAlign = System.Windows.Forms.HorizontalAlignment.Center
+            };
+            nudImageAVIFQuality.ValueChanged += nudImageAVIFQuality_ValueChanged;
+
+            lblImageAVIFSpeed = new System.Windows.Forms.Label
+            {
+                AutoSize = true,
+                Text = "AVIF encoder speed (0 slowest, 10 fastest):",
+                Location = new System.Drawing.Point(left + 20, top + 82)
+            };
+
+            nudImageAVIFSpeed = new System.Windows.Forms.NumericUpDown
+            {
+                Minimum = 0,
+                Maximum = 10,
+                Width = 90,
+                Location = new System.Drawing.Point(left + 240, top + 79),
+                TextAlign = System.Windows.Forms.HorizontalAlignment.Center
+            };
+            nudImageAVIFSpeed.ValueChanged += nudImageAVIFSpeed_ValueChanged;
+
+            cbImageAVIFChromaSubsampling = new System.Windows.Forms.CheckBox
+            {
+                AutoSize = true,
+                Text = "Use 4:2:0 chroma subsampling (smaller files, softer coloured text)",
+                Location = new System.Drawing.Point(left + 20, top + 110),
+                UseVisualStyleBackColor = true
+            };
+            cbImageAVIFChromaSubsampling.CheckedChanged += cbImageAVIFChromaSubsampling_CheckedChanged;
+
+            System.Windows.Forms.Control parent = cbImageAutoUseJPEG.Parent;
+            parent.Controls.Add(cbImageAutoUseAVIFForHDR);
+            parent.Controls.Add(lblImageAVIFHint);
+            parent.Controls.Add(lblImageAVIFQuality);
+            parent.Controls.Add(nudImageAVIFQuality);
+            parent.Controls.Add(lblImageAVIFSpeed);
+            parent.Controls.Add(nudImageAVIFSpeed);
+            parent.Controls.Add(cbImageAVIFChromaSubsampling);
+        }
+
         public TaskSettingsForm(TaskSettings hotkeySetting, bool isDefault = false)
         {
             InitializeComponent();
+            InitializeHdrPerformanceModeControl();
+            InitializeAvifControls();
             ShareXResources.ApplyTheme(this, true);
 
             tsmiURLShorteners.Image = ShareXResources.IsDarkTheme ? Resources.edit_scale_white : Resources.edit_scale;
@@ -246,6 +354,10 @@ namespace ShareX
             cbImageFileExist.Items.Clear();
             cbImageFileExist.Items.AddRange(Helpers.GetLocalizedEnumDescriptions<FileExistAction>());
             cbImageFileExist.SelectedIndex = (int)TaskSettings.ImageSettings.FileExistAction;
+            cbImageAutoUseAVIFForHDR.Checked = TaskSettings.ImageSettings.ImageAutoUseAVIFForHDR;
+            nudImageAVIFQuality.SetValue(TaskSettings.ImageSettings.ImageAVIFQuality);
+            nudImageAVIFSpeed.SetValue(TaskSettings.ImageSettings.ImageAVIFSpeed);
+            cbImageAVIFChromaSubsampling.Checked = TaskSettings.ImageSettings.ImageAVIFChromaSubsampling;
 
             #endregion General
 
@@ -290,6 +402,8 @@ namespace ShareX
             txtCaptureCustomWindow.Text = TaskSettings.CaptureSettings.CaptureCustomWindow;
             cbToneMapType.Items.AddRange(Enum.GetNames(typeof(HdrToneMapType)));
             cbToneMapType.SelectedIndex = (int)TaskSettings.CaptureSettings.HdrSettings.HdrToneMapType;
+            cbPerformanceMode.Items.AddRange(Enum.GetNames(typeof(PerformanceMode)));
+            cbPerformanceMode.SelectedIndex = (int)TaskSettings.CaptureSettings.HdrSettings.PerformanceMode;
             nudCaptureHDRNits.Value = (decimal)TaskSettings.CaptureSettings.HdrSettings.HdrBrightnessNits;
             nudCaptureBrightnessScale.Value = (decimal)TaskSettings.CaptureSettings.HdrSettings.BrightnessScale;
             nudCaptureSDRScale.Value = (decimal)TaskSettings.CaptureSettings.HdrSettings.SdrWhiteScale;
@@ -986,6 +1100,11 @@ namespace ShareX
             TaskSettings.CaptureSettings.HdrSettings.HdrToneMapType = (HdrToneMapType)cbToneMapType.SelectedIndex;
         }
 
+        private void cbPerformanceMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            TaskSettings.CaptureSettings.HdrSettings.PerformanceMode = (PerformanceMode)cbPerformanceMode.SelectedIndex;
+        }
+
         private void cbImagePNGBitDepth_SelectedIndexChanged(object sender, EventArgs e)
         {
             TaskSettings.ImageSettings.ImagePNGBitDepth = (PNGBitDepth)cbImagePNGBitDepth.SelectedIndex;
@@ -999,6 +1118,26 @@ namespace ShareX
         private void cbImageGIFQuality_SelectedIndexChanged(object sender, EventArgs e)
         {
             TaskSettings.ImageSettings.ImageGIFQuality = (GIFQuality)cbImageGIFQuality.SelectedIndex;
+        }
+
+        private void cbImageAutoUseAVIFForHDR_CheckedChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageAutoUseAVIFForHDR = cbImageAutoUseAVIFForHDR.Checked;
+        }
+
+        private void nudImageAVIFQuality_ValueChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageAVIFQuality = (int)nudImageAVIFQuality.Value;
+        }
+
+        private void nudImageAVIFSpeed_ValueChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageAVIFSpeed = (int)nudImageAVIFSpeed.Value;
+        }
+
+        private void cbImageAVIFChromaSubsampling_CheckedChanged(object sender, EventArgs e)
+        {
+            TaskSettings.ImageSettings.ImageAVIFChromaSubsampling = cbImageAVIFChromaSubsampling.Checked;
         }
 
         private void cbImageAutoUseJPEG_CheckedChanged(object sender, EventArgs e)

@@ -331,3 +331,6 @@ ASALocalRun/
 # ShareX
 Output/
 APIKeysLocal.cs
+# Local tooling artifacts
+graphify-out/
+.opencode/

@@ -24,6 +24,7 @@
 #endregion License Information (GPL v3)
 
 using ShareX.HelpersLib;
+using ShareX.MediaLib;
 using System;
 using System.Drawing;
 using System.Globalization;
@@ -100,11 +101,7 @@ namespace ShareX.ScreenCaptureLib
                 {
                     if (FFmpeg.VideoSource.Equals(FFmpegCaptureDevice.GDIGrab.Value, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (FFmpeg.IsAudioSourceSelected)
-                        {
-                            AppendInputDevice(args, "dshow", true);
-                            args.Append($"-i audio={Helpers.EscapeCLIText(FFmpeg.AudioSource)} ");
-                        }
+                        AppendAudioInput(args);
 
                         string x = isCustom ? "$area_x$" : CaptureArea.X.ToString();
                         string y = isCustom ? "$area_y$" : CaptureArea.Y.ToString();
@@ -123,11 +120,7 @@ namespace ShareX.ScreenCaptureLib
                     }
                     else if (FFmpeg.VideoSource.Equals(FFmpegCaptureDevice.DDAGrab.Value, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (FFmpeg.IsAudioSourceSelected)
-                        {
-                            AppendInputDevice(args, "dshow", true);
-                            args.Append($"-i audio={Helpers.EscapeCLIText(FFmpeg.AudioSource)} ");
-                        }
+                        AppendAudioInput(args);
 
                         Screen[] screens = Screen.AllScreens.OrderBy(x => !x.Primary).ToArray();
                         int monitorIndex = 0;
@@ -192,8 +185,7 @@ namespace ShareX.ScreenCaptureLib
                 }
                 else if (FFmpeg.IsAudioSourceSelected)
                 {
-                    AppendInputDevice(args, "dshow", true);
-                    args.Append($"-i audio={Helpers.EscapeCLIText(FFmpeg.AudioSource)} ");
+                    AppendAudioInput(args);
                 }
             }
             else
@@ -336,6 +328,28 @@ namespace ShareX.ScreenCaptureLib
             args.Append($"\"{output}\"");
 
             return args.ToString();
+        }
+
+        private void AppendAudioInput(StringBuilder args)
+        {
+            if (!FFmpeg.IsAudioSourceSelected)
+            {
+                return;
+            }
+
+            if (FFmpegCaptureDevice.IsWasapiLoopback(FFmpeg.AudioSource))
+            {
+                // System audio is captured in-process via WASAPI loopback and streamed
+                // to FFmpeg as raw PCM over a named pipe (see SystemAudioLoopbackCapture).
+                args.Append("-thread_queue_size 1024 ");
+                args.Append($"-f s16le -ar {SystemAudioLoopbackCapture.SampleRate} -ac {SystemAudioLoopbackCapture.Channels} ");
+                args.Append($"-i {SystemAudioLoopbackCapture.PipePath} ");
+            }
+            else
+            {
+                AppendInputDevice(args, "dshow", true);
+                args.Append($"-i audio={Helpers.EscapeCLIText(FFmpeg.AudioSource)} ");
+            }
         }
 
         private void AppendInputDevice(StringBuilder args, string inputDevice, bool audioSource)

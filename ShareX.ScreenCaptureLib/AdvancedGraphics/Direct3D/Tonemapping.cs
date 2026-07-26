@@ -31,11 +31,11 @@ public class Tonemapping
 
     public static ID3D11Texture2D TonemapOnGpu(HdrSettings hdrSettings, ModernCaptureMonitorDescription region, DeviceAccess deviceAccess,
         ID3D11Texture2D cpuStaging, ID3D11Texture2D gpuRawTexture, ID3D11Texture2D canvasGpu,     Box                                  destBox,
-        Box                                  srcBox)
+        Box                                  srcBox, out ImageInfo imageInfo)
     {
         ID3D11Device device = deviceAccess.Device;
         ID3D11DeviceContext ctx = device.ImmediateContext;
-        ImageInfo imageInfo = CalculateImageInfo(hdrSettings, cpuStaging);
+        imageInfo = CalculateImageInfo(hdrSettings, cpuStaging);
         ShaderConstantHelper.GetShaderConstants(region.MonitorInfo, hdrSettings, imageInfo, out var vertexShaderConstants, out var pixelShaderConstants);
         // var quadVerts = defaultVerts; // Direct3DUtils.ConstructForScreen(region);
 
@@ -99,18 +99,7 @@ public class Tonemapping
         ctx.IASetInputLayout(deviceAccess.inputLayout);
         ctx.IASetVertexBuffer(0, vertexBuffer, Vertex.SizeInBytes);
 
-        var sampler = device.CreateSamplerState(new SamplerDescription()
-        {
-            Filter = Filter.MinMagMipLinear,
-            AddressU = TextureAddressMode.Clamp,
-            AddressV = TextureAddressMode.Clamp,
-            AddressW = TextureAddressMode.Clamp,
-            MipLODBias = 0,
-            ComparisonFunc = ComparisonFunction.Never,
-            MinLOD = 0,
-            MaxLOD = 0
-        });
-        ctx.PSSetSampler(0, sampler);
+        ctx.PSSetSampler(0, deviceAccess.samplerState);
 
         ctx.VSSetShader(deviceAccess.vxShader);
         ctx.VSSetConstantBuffer(0, vsConstantBuffer);
@@ -123,9 +112,9 @@ public class Tonemapping
 
         hdrSrv.Dispose();
         psConstantBuffer.Dispose();
+        vsConstantBuffer.Dispose();
         vertexBuffer.Dispose();
         ldrRtv.Dispose();
-        sampler.Dispose();
 
 
         return canvasGpu;
@@ -137,7 +126,7 @@ public class Tonemapping
     private static readonly string defaultSDRFileExt = ".png";
 
     // TODO: consider threads?
-    public static ImageInfo CalculateImageInfo(Direct3DUtils.PixelReader pixelReader)
+    public static ImageInfo CalculateImageInfo(Direct3DUtils.PixelReader pixelReader, float hdrContentThresholdNits = 100f)
     {
         ImageInfo result = new ImageInfo();
         var log = Console.Out;
@@ -151,7 +140,6 @@ public class Tonemapping
 
         var stopwatchCore = Stopwatch.StartNew();
         uint[] luminance_freq = new uint[65536];
-        float fLumRange = maxLum - minLum;
 
         var pixels = pixelReader.Pixels;
         for (uint i = 0; i < pixels; i++)
@@ -163,7 +151,7 @@ public class Tonemapping
             maxLum = MathF.Max(vXyz.Y, maxLum);
             minLum = MathF.Min(vXyz.Y, minLum);
 
-            totalLum += MathF.Max(0, maxLum);
+            totalLum += MathF.Max(0, vXyz.Y);
         }
 
         float maxCll = MathF.Max(maxCLLVector.X, maxCLLVector.Y);
@@ -182,18 +170,27 @@ public class Tonemapping
 
         log.WriteLine("CalculateLightInfo(): EvaluateImage, min/max calculated (max: " + maxLum + "): " + stopwatchCore.ElapsedMilliseconds + "ms");
 
-        for (uint i = 0; i < pixels; i++)
-        {
-            Vector4 v = pixelReader.GetPixel(i);
-            v = Vector4.Max(Vector4.Zero, Vector4.Transform(v, ColorspaceUtils.from709ToXYZ));
-            luminance_freq[Math.Clamp((int)Math.Round((v.Y - minLum) / (fLumRange / 65536.0f)), 0, 65535)]++;
+        float fLumRange = maxLum - minLum;
 
-            int idx = Math.Clamp(
-                (int)Math.Round((v.Y - minLum) / (fLumRange / 65536.0f)),
-                0,
-                65535
-            );
-            luminance_freq[idx]++;
+        if (fLumRange > 0.0001f)
+        {
+            for (uint i = 0; i < pixels; i++)
+            {
+                Vector4 v = pixelReader.GetPixel(i);
+                v = Vector4.Max(Vector4.Zero, Vector4.Transform(v, ColorspaceUtils.from709ToXYZ));
+
+                int idx = Math.Clamp(
+                    (int)Math.Round((v.Y - minLum) / (fLumRange / 65536.0f)),
+                    0,
+                    65535
+                );
+                luminance_freq[idx]++;
+            }
+        }
+        else
+        {
+            // Uniform-luminance image: everything lands in a single bucket
+            luminance_freq[Math.Clamp((int)Math.Round(maxLum * 65536.0f), 0, 65535)] = pixels;
         }
 
         log.WriteLine("CalculateImageInfo(): EvaluateImage, luminance_freq calculated: " + stopwatchCore.ElapsedMilliseconds + "ms");
@@ -227,7 +224,12 @@ public class Tonemapping
             SDR_YInPQ,
             ColorspaceUtils.LinearToPQY(MathF.Min(_maxNitsToTonemap, maxLum * scale))
         );
-        result.MaxYInPQ = maxYInPQ; // TODO: is this correct?
+        result.MaxYInPQ = maxYInPQ; // PQ-encoded content peak, clamped to the range we actually tonemap
+
+        // Everything on an HDR desktop arrives as scRGB floats, including plain SDR content, so the
+        // format alone says nothing. Only call it HDR once something is actually brighter than SDR white.
+        result.Hdr = result.MaxNits > hdrContentThresholdNits;
+
         return result;
     }
 
@@ -237,7 +239,7 @@ public class Tonemapping
         try
         {
             reader = image.GetPixelReader(setting);
-            return CalculateImageInfo(reader);
+            return CalculateImageInfo(reader, setting.HdrContentThresholdNits);
         }
         finally
         {

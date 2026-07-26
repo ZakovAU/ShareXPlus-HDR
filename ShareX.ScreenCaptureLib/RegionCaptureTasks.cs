@@ -181,6 +181,13 @@ namespace ShareX.ScreenCaptureLib
 
                         g.FillPath(brush, gp);
 
+                        if (IsRectangularPath(gp, resultArea))
+                        {
+                            // A plain rectangular selection copies pixels one for one, so the HDR
+                            // payload still describes the result and can ride along through the crop.
+                            HdrImageRegistry.Propagate(bmp, bmpResult);
+                        }
+
                         return ImageHelpers.CropBitmap(bmpResult, resultArea);
                     }
                 }
@@ -188,6 +195,23 @@ namespace ShareX.ScreenCaptureLib
 
             resultArea = Rectangle.Empty;
             return null;
+        }
+
+        /// <summary>
+        /// True when the path is a four point figure that covers its whole bounding box, i.e. a
+        /// rectangle rather than an ellipse, triangle or freehand shape.
+        /// </summary>
+        private static bool IsRectangularPath(GraphicsPath gp, Rectangle area)
+        {
+            if (gp.PointCount != 4 || area.Width < 2 || area.Height < 2)
+            {
+                return false;
+            }
+
+            return gp.IsVisible(area.Left + 0.5f, area.Top + 0.5f) &&
+                gp.IsVisible(area.Right - 0.5f, area.Top + 0.5f) &&
+                gp.IsVisible(area.Left + 0.5f, area.Bottom - 0.5f) &&
+                gp.IsVisible(area.Right - 0.5f, area.Bottom - 0.5f);
         }
 
         private static RegionCaptureOptions GetRegionCaptureOptions(RegionCaptureOptions options)

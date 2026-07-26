@@ -645,10 +645,28 @@ namespace ShareX
                 }
             }
 
+            // Encode once and reuse it for the clipboard and the file, since a 4K AVIF is not cheap.
+            byte[] hdrAvifData = null;
+
+            if (HdrAvifHelper.ShouldUseAvif(Image, Info.TaskSettings) &&
+                Info.TaskSettings.AfterCaptureJob.HasFlagAny(AfterCaptureTasks.CopyImageToClipboard, AfterCaptureTasks.SaveImageToFile,
+                    AfterCaptureTasks.SaveImageToFileWithDialog, AfterCaptureTasks.UploadImageToHost))
+            {
+                hdrAvifData = HdrAvifHelper.EncodeHdr(Image, Info.TaskSettings);
+            }
+
             if (Info.TaskSettings.AfterCaptureJob.HasFlag(AfterCaptureTasks.CopyImageToClipboard))
             {
-                ClipboardHelpers.CopyImage(Image, Info.FileName);
-                DebugHelper.WriteLine("Image copied to clipboard.");
+                if (hdrAvifData != null)
+                {
+                    ClipboardHelpers.CopyImageWithAvif(Image, hdrAvifData, Info.FileName);
+                    DebugHelper.WriteLine("HDR image copied to clipboard as AVIF, with an SDR fallback.");
+                }
+                else
+                {
+                    ClipboardHelpers.CopyImage(Image, Info.FileName);
+                    DebugHelper.WriteLine("Image copied to clipboard.");
+                }
             }
 
             if (Info.TaskSettings.AfterCaptureJob.HasFlag(AfterCaptureTasks.PinToScreen))
@@ -667,7 +685,7 @@ namespace ShareX
             if (Info.TaskSettings.AfterCaptureJob.HasFlagAny(AfterCaptureTasks.SaveImageToFile, AfterCaptureTasks.SaveImageToFileWithDialog, AfterCaptureTasks.DoOCR,
                 AfterCaptureTasks.UploadImageToHost))
             {
-                ImageData imageData = TaskHelpers.PrepareImage(Image, Info.TaskSettings);
+                ImageData imageData = TaskHelpers.PrepareImage(Image, Info.TaskSettings, hdrAvifData);
                 Data = imageData.ImageStream;
                 Info.FileName = Path.ChangeExtension(Info.FileName, imageData.ImageFormat.GetDescription());
 
@@ -751,6 +769,10 @@ namespace ShareX
                     }
                 }
             }
+
+            // The HDR pixels have served their purpose; a 4K payload is 66 MB and the bitmap can
+            // stick around for a long time in the task list.
+            HdrAvifHelper.Release(Image);
 
             return true;
         }

@@ -28,6 +28,29 @@ public static class Direct3DUtils
         return device.CreateTexture2D(desc);
     }
 
+    /// <summary>
+    /// Canvas that holds the untonemapped scRGB pixels, in the same half float format desktop
+    /// duplication hands us on an HDR desktop, so regions can be copied straight in.
+    /// </summary>
+    public static ID3D11Texture2D CreateHdrCanvasTexture(uint width, uint height, ID3D11Device device)
+    {
+        var desc = new Texture2DDescription
+        {
+            Width = width,
+            Height = height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = Format.R16G16B16A16_Float,
+            SampleDescription = new SampleDescription(1, 0),
+            Usage = ResourceUsage.Default,
+            BindFlags = BindFlags.ShaderResource,
+            CPUAccessFlags = CpuAccessFlags.None,
+            MiscFlags = ResourceOptionFlags.None
+        };
+
+        return device.CreateTexture2D(desc);
+    }
+
 
     /// After you finish copying all regions into this “canvas,” you can do:
     ///    var staging = CreateStagingFor(canvasTex);
