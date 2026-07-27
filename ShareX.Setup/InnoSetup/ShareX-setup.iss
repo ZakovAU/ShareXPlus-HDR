@@ -46,6 +46,8 @@ Name: "DisablePrintScreenKeyForSnippingTool"; Description: "Disable Print Screen
 
 [Files]
 Source: "{#MyAppFilePath}"; DestDir: {app}; Flags: ignoreversion
+Source: "{#MyAppReleaseDirectory}\ShareX.runtimeconfig.json"; DestDir: {app}; Flags: ignoreversion
+Source: "{#MyAppReleaseDirectory}\ShareX.deps.json"; DestDir: {app}; Flags: ignoreversion
 Source: "{#MyAppReleaseDirectory}\*.dll"; DestDir: {app}; Flags: ignoreversion
 Source: "{#MyAppRootDirectory}\Licenses\*.txt"; DestDir: {app}\Licenses; Flags: ignoreversion
 Source: "{#MyAppOutputDirectory}\Recorder-devices-setup.exe"; DestDir: {app}; Flags: ignoreversion

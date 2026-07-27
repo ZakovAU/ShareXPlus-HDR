@@ -93,7 +93,7 @@ namespace ShareX.Setup
         private static string ExifToolPath => Path.Combine(OutputDir, "exiftool.exe");
         private static string MakeAppxPath => Path.Combine(WindowsKitsDir, "x64", "makeappx.exe");
 
-        private const string InnoSetupCompilerPath = @"C:\Program Files (x86)\Inno Setup 6\ISCC.exe";
+        private const string InnoSetupCompilerPath = @"C:\Users\yakov\AppData\Local\Programs\Inno Setup 6\ISCC.exe";
         private const string FFmpegVersion = "7.1";
         private static string FFmpegDownloadURL = $"https://github.com/ShareX/FFmpeg/releases/download/v{FFmpegVersion}/ffmpeg-{FFmpegVersion}-win64.zip";
         private const string ExifToolVersion = "13.29";
@@ -364,6 +364,8 @@ namespace ShareX.Setup
 
             FileHelpers.CopyFiles(Path.Combine(source, "ShareX.exe"), destination);
             // FileHelpers.CopyFiles(Path.Combine(source, "ShareX.exe.config"), destination);
+            FileHelpers.CopyFiles(Path.Combine(source, "ShareX.runtimeconfig.json"), destination);
+            FileHelpers.CopyFiles(Path.Combine(source, "ShareX.deps.json"), destination);
             FileHelpers.CopyFiles(source, destination, "*.dll");
 
             if (job == SetupJobs.CreateDebug || job == SetupJobs.CreateMicrosoftStoreDebugFolder)
