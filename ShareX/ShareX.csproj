@@ -33,6 +33,9 @@
     <ProjectReference Include="..\ShareX.ScreenCaptureLib\ShareX.ScreenCaptureLib.csproj" />
     <ProjectReference Include="..\ShareX.HelpersLib\ShareX.HelpersLib.csproj" />
     <ProjectReference Include="..\ShareX.UploadersLib\ShareX.UploadersLib.csproj" />
+    <!-- Ordering-only reference: makes sure ShareX.Setup.exe exists before the
+         CompileInstaller post-build target runs, without referencing its assembly. -->
+    <ProjectReference Include="..\ShareX.Setup\ShareX.Setup.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host-manifest-chrome.json">
@@ -45,4 +48,37 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- Post-build: bump the patch number in version.txt so the next Release build gets a
+       new version. The increment is written after this build, so the binaries and the
+       installer compiled below always carry the version this build actually used.
+       Skip with /p:BumpVersion=false. -->
+  <Target Name="BumpVersion" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release' and '$(BumpVersion)' != 'false'">
+    <PropertyGroup>
+      <VersionFile>$(MSBuildProjectDirectory)\..\version.txt</VersionFile>
+      <CurrentPatch>$([System.IO.File]::ReadAllText('$(VersionFile)').Trim())</CurrentPatch>
+      <NextPatch>$([MSBuild]::Add($(CurrentPatch), 1))</NextPatch>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(VersionFile)" Lines="$(NextPatch)" Overwrite="true" />
+    <Message Importance="high" Text="Version for this build: $(Version). Next Release build will be patch $(NextPatch)." />
+  </Target>
+
+  <!-- Post-build: compile the Inno Setup installer into Output\.
+       Runs ShareX.Setup with an installer-only job, which keeps the already downloaded
+       tools and just recompiles the .iss files against the freshly built binaries.
+       Skip with /p:CompileInstaller=false. Requires ShareX.Setup to be built first
+       (it is, when building the solution). -->
+  <Target Name="CompileInstaller" AfterTargets="BumpVersion"
+          Condition="'$(Configuration)' == 'Release' and '$(CompileInstaller)' != 'false'">
+    <PropertyGroup>
+      <ShareXSetupExe>$(MSBuildProjectDirectory)\..\ShareX.Setup\bin\$(Configuration)\win-x64\ShareX.Setup.exe</ShareXSetupExe>
+    </PropertyGroup>
+    <Warning Condition="!Exists('$(ShareXSetupExe)')"
+             Text="ShareX.Setup.exe was not found at '$(ShareXSetupExe)'. Build the ShareX.Setup project first; skipping installer compilation." />
+    <Exec Condition="Exists('$(ShareXSetupExe)')"
+          WorkingDirectory="$(MSBuildProjectDirectory)\.."
+          Command="&quot;$(ShareXSetupExe)&quot; -Silent -Job CreateSetup,DownloadTools"
+          IgnoreExitCode="false" />
+  </Target>
 </Project>

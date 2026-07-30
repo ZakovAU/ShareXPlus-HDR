@@ -81,14 +81,16 @@ namespace ShareX.Setup
         private static string InnoSetupDir => Path.Combine(SetupDir, "InnoSetup");
         private static string MicrosoftStorePackageFilesDir => Path.Combine(SetupDir, "MicrosoftStore");
 
-        private static string SetupPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}-setup.exe");
+        private const string AppName = "ShareXPlus-HDR";
+
+        private static string SetupPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}-setup.exe");
         private static string RecorderDevicesSetupPath => Path.Combine(OutputDir, "Recorder-devices-setup.exe");
-        private static string PortableZipPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}-portable.zip");
-        private static string DebugZipPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}-debug.zip");
+        private static string PortableZipPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}-portable.zip");
+        private static string DebugZipPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}-debug.zip");
         private static string SteamUpdatesDir => Path.Combine(SteamOutputDir, "Updates");
-        private static string SteamZipPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}-Steam.zip");
-        private static string MicrosoftStoreAppxPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}.appx");
-        private static string MicrosoftStoreDebugAppxPath => Path.Combine(OutputDir, $"ShareX-{AppVersion}-debug.appx");
+        private static string SteamZipPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}-Steam.zip");
+        private static string MicrosoftStoreAppxPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}.appx");
+        private static string MicrosoftStoreDebugAppxPath => Path.Combine(OutputDir, $"{AppName}-{AppVersion}-debug.appx");
         private static string FFmpegPath => Path.Combine(OutputDir, "ffmpeg.exe");
         private static string ExifToolPath => Path.Combine(OutputDir, "exiftool.exe");
         private static string MakeAppxPath => Path.Combine(WindowsKitsDir, "x64", "makeappx.exe");
@@ -109,11 +111,21 @@ namespace ShareX.Setup
 
             UpdatePaths();
 
-            if (Directory.Exists(OutputDir))
+            // An installer-only run (post-build step) must not wipe the output directory,
+            // otherwise the already downloaded tools (ffmpeg, exiftool) would be thrown
+            // away and re-downloaded on every build.
+            bool installerOnly = (Job & ~(SetupJobs.CreateSetup | SetupJobs.DownloadTools)) == 0;
+
+            if (!installerOnly && Directory.Exists(OutputDir))
             {
                 Console.WriteLine("Cleaning output directory: " + OutputDir);
 
                 Directory.Delete(OutputDir, true);
+            }
+
+            if (installerOnly)
+            {
+                Directory.CreateDirectory(OutputDir);
             }
 
             if (Job.HasFlag(SetupJobs.DownloadTools))

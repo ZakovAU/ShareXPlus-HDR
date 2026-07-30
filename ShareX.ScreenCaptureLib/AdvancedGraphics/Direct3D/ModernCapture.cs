@@ -143,7 +143,7 @@ public class ModernCapture : IDisposable, DisposableCache
                 }
 
                 state.Dup.Dispose();
-                state.Staging.Dispose();
+                state.Staging?.Dispose();
             }
 
             // your helper:
@@ -304,23 +304,50 @@ public class ModernCapture : IDisposable, DisposableCache
 
                 // 1) AcquireNextFrame:
                 var dupState = GetOrCreateDup(state.Region.MonitorInfo.Hmon);
-                IDXGIResource resourcee;
-                Result acquireNextFrame;
-                OutduplFrameInfo outduplFrameInfo;
-                do
+                IDXGIResource resourcee = null;
+                OutduplFrameInfo outduplFrameInfo = default;
+                bool acquired = false;
+
+                // Bounded retry loop. The old version spun until a frame with a fresh present
+                // arrived, which never happens on an idle desktop (infinite WaitTimeout loop)
+                // and leaked the undisposable resource of every stale frame it threw away.
+                const int maxAcquireAttempts = 100; // 100 x 10ms timeout = ~1s worst case
+
+                for (int attempt = 0; attempt < maxAcquireAttempts && !acquired; attempt++)
                 {
                     dupState.Dup.ReleaseFrame();
-                    // sometimes this closes the device??? ?? ?? ? ? ???? wheen screen is in the nagtive space??? TODO
-                    acquireNextFrame = dupState.Dup.AcquireNextFrame(10, out outduplFrameInfo, out resourcee);
-                    if (acquireNextFrame.Failure) // TODO: only recreate on some errors?
+                    resourcee?.Dispose();
+                    resourcee = null;
+
+                    Result acquireNextFrame = dupState.Dup.AcquireNextFrame(10, out outduplFrameInfo, out resourcee);
+
+                    if (acquireNextFrame.Failure)
                     {
+                        resourcee?.Dispose();
+                        resourcee = null;
+
                         if (acquireNextFrame.ApiCode != "WaitTimeout")
                         {
+                            // AccessLost / InvalidCall: the duplication is dead, recreate it.
                             dupState.Dup.ReleaseFrame();
                             dupState = GetOrCreateDup(state.Region.MonitorInfo.Hmon, true);
                         }
+
+                        continue;
                     }
-                } while (!acquireNextFrame.Success || outduplFrameInfo.LastPresentTime == 0);
+
+                    // A frame with LastPresentTime == 0 still contains the current desktop image
+                    // (that is what the first acquire after (re)creating the duplication returns),
+                    // so after a few tries accept it instead of waiting forever for a new present.
+                    acquired = outduplFrameInfo.LastPresentTime != 0 || attempt >= 5;
+                }
+
+                if (!acquired || resourcee == null)
+                {
+                    // The desktop never presented a frame; bail out so the caller can fall back
+                    // to GDI capture instead of hanging or returning a black bitmap.
+                    throw new ApplicationException("Desktop duplication produced no frame.");
+                }
 
                 using var resource = resourcee;
                 using var frameTex = resource.QueryInterface<ID3D11Texture2D>();

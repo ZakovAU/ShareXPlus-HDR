@@ -1,13 +1,13 @@
-#define MyAppName "ShareX"
+#define MyAppName "ShareXPlus-HDR"
 #define MyAppRootDirectory "..\.."
 #define MyAppOutputDirectory MyAppRootDirectory + "\Output"
-#define MyAppReleaseDirectory MyAppRootDirectory + "\" + MyAppName + "\bin\Release\win-x64"
-#define MyAppReleaseDirectoryHost MyAppRootDirectory + "\" + MyAppName + ".NativeMessagingHost\bin\Release\win-x64"
-#define MyAppFileName MyAppName + ".exe"
+#define MyAppReleaseDirectory MyAppRootDirectory + "\" + "ShareX" + "\bin\Release\win-x64"
+#define MyAppReleaseDirectoryHost MyAppRootDirectory + "\" + "ShareX.NativeMessagingHost\bin\Release\win-x64"
+#define MyAppFileName "ShareX.exe"
 #define MyAppFilePath MyAppReleaseDirectory + "\" + MyAppFileName
 #define MyAppVersion GetStringFileInfo(MyAppFilePath, "ProductVersion")
 #define MyAppPublisher "ShareX Team"
-#define MyAppURL "https://github.com/ZakovAU/ShareX-HDR"
+#define MyAppURL "https://github.com/ZakovAU/ShareXPlus-HDR"
 #define MyAppId "82E6AC09-0FEF-4390-AD9F-0DD3F5561EFC"
 
 [Setup]

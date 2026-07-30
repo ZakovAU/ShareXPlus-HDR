@@ -1,9 +1,11 @@
 <Project>
   <PropertyGroup>
     <Company>ShareX Team</Company>
-    <Product>ShareX</Product>
+    <Product>ShareXPlus-HDR</Product>
     <Copyright>Copyright (c) 2007-2025 ShareX Team</Copyright>
-    <Version>17.1.1</Version>
+    <!-- Patch number lives in version.txt and is auto-incremented by the BumpVersion
+         post-build target in ShareX.csproj on every Release build. Bump major/minor here. -->
+    <Version>17.1.$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)version.txt').Trim())</Version>
     <EmbeddedResourceUseDependentUponConvention>true</EmbeddedResourceUseDependentUponConvention>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

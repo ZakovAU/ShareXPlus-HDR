@@ -163,13 +163,14 @@ namespace ShareX.MediaLib
             // matrix for the RGB to YUV step, otherwise it silently converts with BT.709
             // coefficients and we would be tagging a lie. setparams then stamps the frame itself:
             // the -color_* output options alone leave the nclx colour box at "unspecified", and an
-            // untagged HDR file is displayed as SDR.
-            args.Append("-vf \"scale=out_color_matrix=bt2020:out_range=tv," +
-                "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv\" ");
+            // untagged HDR file is displayed as SDR. Full range is used because AVIF decoders
+            // widely assume it; limited range files render washed out in those viewers.
+            args.Append("-vf \"scale=out_color_matrix=bt2020:out_range=full," +
+                "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=full\" ");
 
             AppendEncoderArgs(args, encoder, options, GetHdrPixelFormat(encoder, options), maxCll, maxFall);
 
-            args.Append("-color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -color_range tv ");
+            args.Append("-color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -color_range pc ");
 
             return RunEncode(ffmpegPath, args.ToString(), pq, "HDR");
         }
@@ -208,11 +209,11 @@ namespace ShareX.MediaLib
                 args.Append("-hide_banner -loglevel error -y ");
                 args.Append(CultureInfo.InvariantCulture, $"-i \"{inputPath}\" ");
                 args.Append("-frames:v 1 -map_metadata -1 ");
-                args.Append("-vf \"setparams=color_primaries=bt709:color_trc=iec61966-2-1:colorspace=bt709:range=tv\" ");
+                args.Append("-vf \"scale=out_range=full,setparams=color_primaries=bt709:color_trc=iec61966-2-1:colorspace=bt709:range=full\" ");
 
                 AppendEncoderArgs(args, encoder, options, GetSdrPixelFormat(encoder, options), 0, 0);
 
-                args.Append("-color_primaries bt709 -color_trc iec61966-2-1 -colorspace bt709 -color_range tv ");
+                args.Append("-color_primaries bt709 -color_trc iec61966-2-1 -colorspace bt709 -color_range pc ");
 
                 return RunEncode(ffmpegPath, args.ToString(), null, "SDR");
             }

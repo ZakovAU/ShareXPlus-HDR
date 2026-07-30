@@ -284,12 +284,11 @@ namespace ShareX
             IsAdmin = Helpers.IsAdministrator();
             MultiInstance = CLI.IsCommandExist("multi", "m");
 
-            // TODO: fix later
-            // using (SingleInstanceManager singleInstanceManager = new SingleInstanceManager(MutexName, PipeName, !MultiInstance, args))
-            // {
-            //     if (!singleInstanceManager.IsSingleInstance || singleInstanceManager.IsFirstInstance)
-            //     {
-            //         singleInstanceManager.ArgumentsReceived += SingleInstanceManager_ArgumentsReceived;
+            using (SingleInstanceManager singleInstanceManager = new SingleInstanceManager(MutexName, PipeName, !MultiInstance, args))
+            {
+                if (!singleInstanceManager.IsSingleInstance || singleInstanceManager.IsFirstInstance)
+                {
+                    singleInstanceManager.ArgumentsReceived += SingleInstanceManager_ArgumentsReceived;
 
                     using (TimerResolutionManager timerResolutionManager = new TimerResolutionManager())
                     {
@@ -309,8 +308,8 @@ namespace ShareX
                             Process.Start(Application.ExecutablePath);
                         }
                     }
-            //     }
-            // }
+                }
+            }
 
             DebugHelper.Flush();
         }
