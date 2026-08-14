@@ -82,6 +82,14 @@ namespace ShareX.ScreenCaptureLib
             {
                 CreateParams createParams = base.CreateParams;
                 createParams.ExStyle |= (int)(WindowStyles.WS_EX_TOPMOST | WindowStyles.WS_EX_TOOLWINDOW);
+
+                if (!ActivateWindow)
+                {
+                    // Clicks on the record form must not activate it either, otherwise a
+                    // fullscreen game behind it can minimize itself on focus loss.
+                    createParams.ExStyle |= (int)WindowStyles.WS_EX_NOACTIVATE;
+                }
+
                 return createParams;
             }
         }

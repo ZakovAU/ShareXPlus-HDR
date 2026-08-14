@@ -104,6 +104,8 @@ namespace ShareX.ScreenCaptureLib
         private Cursor defaultCursor, openHandCursor, closedHandCursor;
         private Color canvasBackgroundColor, canvasBorderColor, textColor, textShadowColor, textBackgroundColor, textOuterBorderColor, textInnerBorderColor;
         private float zoomFactor = 1;
+        private bool showWithoutActivation;
+        private ForegroundWindowRestorer foregroundRestorer = new ForegroundWindowRestorer();
 
         public RegionCaptureForm(RegionCaptureMode mode, RegionCaptureOptions options, Bitmap canvas = null)
         {
@@ -111,6 +113,11 @@ namespace ShareX.ScreenCaptureLib
             Options = options;
 
             IsFullscreen = !IsEditorMode || Options.ImageEditorStartMode == ImageEditorStartMode.Fullscreen;
+
+            // Over fullscreen/borderless games the overlay must not take foreground
+            // activation, otherwise the game can minimize itself on focus loss (an
+            // effective alt-tab) as soon as the overlay is clicked or activated.
+            showWithoutActivation = IsFullscreen && !IsEditorMode && ForegroundWindowRestorer.IsForegroundWindowFullscreenApp();
 
             if (IsFullscreen && Options.ActiveMonitorMode)
             {
@@ -526,7 +533,10 @@ namespace ShareX.ScreenCaptureLib
 
         private void RegionCaptureForm_Shown(object sender, EventArgs e)
         {
-            this.ForceActivate();
+            if (!showWithoutActivation)
+            {
+                this.ForceActivate();
+            }
 
             OnMoved();
             CenterCanvas();
@@ -572,6 +582,40 @@ namespace ShareX.ScreenCaptureLib
         private void RegionCaptureForm_LostFocus(object sender, EventArgs e)
         {
             Pause();
+        }
+
+        protected override bool ShowWithoutActivation => showWithoutActivation;
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams createParams = base.CreateParams;
+
+                if (showWithoutActivation)
+                {
+                    createParams.ExStyle |= (int)WindowStyles.WS_EX_NOACTIVATE;
+                }
+
+                return createParams;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            foregroundRestorer.Capture();
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+
+            if (!e.Cancel)
+            {
+                foregroundRestorer.Restore();
+            }
         }
 
         private void RegionCaptureForm_FormClosing(object sender, FormClosingEventArgs e)

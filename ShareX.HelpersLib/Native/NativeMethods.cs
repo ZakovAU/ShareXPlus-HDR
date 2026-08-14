@@ -199,6 +199,11 @@ namespace ShareX.HelpersLib
         [DllImport("user32.dll")]
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        /// <summary>Determines whether the specified window handle identifies an existing window.</summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindow(IntPtr hWnd);
+
         /// <summary>Determines the visibility state of the specified window.</summary>
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

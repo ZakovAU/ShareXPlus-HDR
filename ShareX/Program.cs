@@ -30,6 +30,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -429,9 +430,14 @@ namespace ShareX
             return false;
         }
 
+        private static readonly string[] StartupOnlyCommands = { "silent", "s", "multi", "m", "sandbox", "portable", "p", "NoHotkeys", "SteamConfig", "uninstall" };
+
         private static async Task UseCommandLineArgs(string[] args)
         {
-            if (args == null || args.Length < 1)
+            CLIManager cli = new CLIManager(args);
+            cli.ParseCommands();
+
+            if (!HasActionableCommands(cli.Commands))
             {
                 if (MainForm.niTray != null && MainForm.niTray.Visible)
                 {
@@ -447,10 +453,17 @@ namespace ShareX
                 MainForm.ForceActivate();
             }
 
-            CLIManager cli = new CLIManager(args);
-            cli.ParseCommands();
-
             await CLI.UseCommandLineArgs(cli.Commands);
+        }
+
+        private static bool HasActionableCommands(List<CLICommand> commands)
+        {
+            if (commands == null || commands.Count == 0)
+            {
+                return false;
+            }
+
+            return commands.Any(command => !command.IsCommand || !StartupOnlyCommands.Contains(command.Command, StringComparer.OrdinalIgnoreCase));
         }
 
         private static void UpdatePersonalPath()

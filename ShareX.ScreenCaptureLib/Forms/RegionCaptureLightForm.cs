@@ -52,9 +52,13 @@ namespace ShareX.ScreenCaptureLib
         private Point currentPosition, positionOnClick;
         private bool isMouseDown;
         private Stopwatch penTimer;
+        private bool showWithoutActivation;
+        private ForegroundWindowRestorer foregroundRestorer = new ForegroundWindowRestorer();
 
         public RegionCaptureLightForm(Bitmap canvas, bool activeMonitorMode = false)
         {
+            showWithoutActivation = ForegroundWindowRestorer.IsForegroundWindowFullscreenApp();
+
             backgroundImage = canvas;
             backgroundBrush = new TextureBrush(backgroundImage);
             borderDotPen = new Pen(Color.Black, 1);
@@ -118,7 +122,44 @@ namespace ShareX.ScreenCaptureLib
 
         private void RectangleLight_Shown(object sender, EventArgs e)
         {
-            this.ForceActivate();
+            if (!showWithoutActivation)
+            {
+                this.ForceActivate();
+            }
+        }
+
+        protected override bool ShowWithoutActivation => showWithoutActivation;
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams createParams = base.CreateParams;
+
+                if (showWithoutActivation)
+                {
+                    createParams.ExStyle |= (int)WindowStyles.WS_EX_NOACTIVATE;
+                }
+
+                return createParams;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            foregroundRestorer.Capture();
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+
+            if (!e.Cancel)
+            {
+                foregroundRestorer.Restore();
+            }
         }
 
         private void RectangleLight_KeyUp(object sender, KeyEventArgs e)

@@ -41,6 +41,7 @@ namespace ShareX
 
         private static ScreenRecorder screenRecorder;
         private static ScreenRecordForm recordForm;
+        private static ForegroundWindowRestorer recordingFocusRestorer = new ForegroundWindowRestorer();
 
         public static void StartStopRecording(ScreenRecordOutput outputType, ScreenRecordStartMethod startMethod, TaskSettings taskSettings)
         {
@@ -126,10 +127,13 @@ namespace ShareX
 
             Rectangle captureRectangle = Rectangle.Empty;
             TaskMetadata metadata = new TaskMetadata();
+            recordingFocusRestorer = new ForegroundWindowRestorer();
 
             switch (startMethod)
             {
                 case ScreenRecordStartMethod.Region:
+                    recordingFocusRestorer.Capture();
+
                     if (taskSettings.CaptureSettings.ScreenRecordTransparentRegion)
                     {
                         RegionCaptureTasks.GetRectangleRegionTransparent(out captureRectangle);
@@ -156,7 +160,29 @@ namespace ShareX
                     metadata.UpdateInfo(activeWindowInfo);
                     break;
                 case ScreenRecordStartMethod.CustomRegion:
-                    captureRectangle = taskSettings.CaptureSettings.CaptureCustomRegion;
+                    recordingFocusRestorer.Capture();
+
+                    RegionCaptureTasks.GetRectangleRegion(out captureRectangle, out WindowInfo selectedWindowInfo, taskSettings.CaptureSettings.SurfaceOptions);
+
+                    metadata.UpdateInfo(selectedWindowInfo);
+
+                    if (captureRectangle.IsValid())
+                    {
+                        taskSettings.CaptureSettingsReference.CaptureCustomRegion = captureRectangle;
+
+                        if (taskSettings.UseDefaultCaptureSettings)
+                        {
+                            SettingManager.SaveApplicationConfigAsync();
+                        }
+                        else
+                        {
+                            SettingManager.SaveHotkeysConfigAsync();
+                        }
+                    }
+                    else
+                    {
+                        recordingFocusRestorer.Restore();
+                    }
                     break;
                 case ScreenRecordStartMethod.LastRegion:
                     captureRectangle = Program.Settings.ScreenRecordRegion;
@@ -189,7 +215,7 @@ namespace ShareX
 
             recordForm = new ScreenRecordForm(captureRectangle)
             {
-                ActivateWindow = startMethod == ScreenRecordStartMethod.Region,
+                ActivateWindow = (startMethod == ScreenRecordStartMethod.Region || startMethod == ScreenRecordStartMethod.CustomRegion) && !ForegroundWindowRestorer.IsForegroundWindowFullscreenApp(),
                 Duration = duration,
                 AskConfirmationOnAbort = taskSettings.CaptureSettings.ScreenRecordAskConfirmationOnAbort
             };
@@ -365,6 +391,7 @@ namespace ShareX
 
         private static void ScreenRecorder_RecordingStarted()
         {
+            recordingFocusRestorer.Restore();
             recordForm.ChangeState(ScreenRecordState.AfterRecordingStart);
         }
 
