@@ -486,6 +486,7 @@ namespace ShareX
         public string ScreenColorPickerFormatCtrl = "$r255, $g255, $b255";
         public string ScreenColorPickerInfoText = "RGB: $r255, $g255, $b255$nHex: $hex$nX: $x Y: $y";
         public PinToScreenOptions PinToScreenOptions = new PinToScreenOptions();
+        public OCRLiveTranslateOptions OCRLiveTranslateOptions = new OCRLiveTranslateOptions();
         public IndexerSettings IndexerSettings = new IndexerSettings();
         public ImageBeautifierOptions ImageBeautifierOptions = new ImageBeautifierOptions();
         public ImageCombinerOptions ImageCombinerOptions = new ImageCombinerOptions();

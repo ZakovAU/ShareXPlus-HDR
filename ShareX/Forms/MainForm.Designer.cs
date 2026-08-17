@@ -93,6 +93,7 @@
             this.tsmiVideoThumbnailer = new System.Windows.Forms.ToolStripMenuItem();
             this.tssTools3 = new System.Windows.Forms.ToolStripSeparator();
             this.tsmiOCR = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiOCRLiveTranslate = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiQRCode = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiHashChecker = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiMetadata = new System.Windows.Forms.ToolStripMenuItem();
@@ -248,6 +249,7 @@
             this.tsmiTrayVideoThumbnailer = new System.Windows.Forms.ToolStripMenuItem();
             this.tssTrayTools3 = new System.Windows.Forms.ToolStripSeparator();
             this.tsmiTrayOCR = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiTrayOCRLiveTranslate = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiTrayQRCode = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiTrayHashChecker = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiTrayIndexFolder = new System.Windows.Forms.ToolStripMenuItem();
@@ -679,6 +681,7 @@
             this.tsmiVideoThumbnailer,
             this.tssTools3,
             this.tsmiOCR,
+            this.tsmiOCRLiveTranslate,
             this.tsmiQRCode,
             this.tsmiHashChecker,
             this.tsmiMetadata,
@@ -804,6 +807,13 @@
             this.tsmiOCR.Name = "tsmiOCR";
             resources.ApplyResources(this.tsmiOCR, "tsmiOCR");
             this.tsmiOCR.Click += new System.EventHandler(this.tsmiOCR_Click);
+            // 
+            // tsmiOCRLiveTranslate
+            // 
+            this.tsmiOCRLiveTranslate.Image = global::ShareX.Properties.Resources.globe__arrow;
+            this.tsmiOCRLiveTranslate.Name = "tsmiOCRLiveTranslate";
+            resources.ApplyResources(this.tsmiOCRLiveTranslate, "tsmiOCRLiveTranslate");
+            this.tsmiOCRLiveTranslate.Click += new System.EventHandler(this.tsmiOCRLiveTranslate_Click);
             // 
             // tsmiQRCode
             // 
@@ -1842,6 +1852,7 @@
             this.tsmiTrayVideoThumbnailer,
             this.tssTrayTools3,
             this.tsmiTrayOCR,
+            this.tsmiTrayOCRLiveTranslate,
             this.tsmiTrayQRCode,
             this.tsmiTrayHashChecker,
             this.tsmiTrayMetadata,
@@ -1967,6 +1978,13 @@
             this.tsmiTrayOCR.Name = "tsmiTrayOCR";
             resources.ApplyResources(this.tsmiTrayOCR, "tsmiTrayOCR");
             this.tsmiTrayOCR.Click += new System.EventHandler(this.tsmiTrayOCR_Click);
+            // 
+            // tsmiTrayOCRLiveTranslate
+            // 
+            this.tsmiTrayOCRLiveTranslate.Image = global::ShareX.Properties.Resources.globe__arrow;
+            this.tsmiTrayOCRLiveTranslate.Name = "tsmiTrayOCRLiveTranslate";
+            resources.ApplyResources(this.tsmiTrayOCRLiveTranslate, "tsmiTrayOCRLiveTranslate");
+            this.tsmiTrayOCRLiveTranslate.Click += new System.EventHandler(this.tsmiOCRLiveTranslate_Click);
             // 
             // tsmiTrayQRCode
             // 
@@ -2594,7 +2612,9 @@
         private System.Windows.Forms.ToolStripMenuItem tsmiImageViewer;
         private System.Windows.Forms.ToolStripMenuItem tsmiTrayImageViewer;
         private System.Windows.Forms.ToolStripMenuItem tsmiOCR;
+        private System.Windows.Forms.ToolStripMenuItem tsmiOCRLiveTranslate;
         private System.Windows.Forms.ToolStripMenuItem tsmiTrayOCR;
+        private System.Windows.Forms.ToolStripMenuItem tsmiTrayOCRLiveTranslate;
         private System.Windows.Forms.ToolStripMenuItem tsmiPinSelectedFile;
         private System.Windows.Forms.ToolStripMenuItem tsmiPinToScreen;
         private System.Windows.Forms.ToolStripMenuItem tsmiTrayPinToScreen;

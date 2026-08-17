@@ -1136,4 +1136,42 @@ Please select a different hotkey or quit the conflicting application and reopen 
   <data name="tag__minus" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\tag--minus.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="OCRLiveTranslate_Title" xml:space="preserve">
+    <value>OCR Live Translate</value>
+  </data>
+  <data name="OCRLiveTranslate_Lock" xml:space="preserve">
+    <value>Lock overlay (clicks pass through to the game)</value>
+  </data>
+  <data name="OCRLiveTranslate_Unlock" xml:space="preserve">
+    <value>Unlock overlay</value>
+  </data>
+  <data name="OCRLiveTranslate_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="OCRLiveTranslate_ReselectRegion" xml:space="preserve">
+    <value>Reselect region</value>
+  </data>
+  <data name="OCRLiveTranslate_Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="OCRLiveTranslate_Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="OCRLiveTranslate_Copy" xml:space="preserve">
+    <value>Copy translation</value>
+  </data>
+  <data name="OCRLiveTranslate_ExperimentalDisabled" xml:space="preserve">
+    <value>OCR Live Translate is experimental and is off by default.
+
+Enable it in Application settings → Advanced → Experimental → OCR Live Translate.</value>
+  </data>
+  <data name="OCRLiveTranslate_Waiting" xml:space="preserve">
+    <value>Waiting for text...</value>
+  </data>
+  <data name="OCRLiveTranslate_Source" xml:space="preserve">
+    <value>OCR</value>
+  </data>
+  <data name="OCRLiveTranslate_Target" xml:space="preserve">
+    <value>Translate to</value>
+  </data>
 </root>

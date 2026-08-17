@@ -292,6 +292,9 @@ namespace ShareX
                         await OCRImage(safeTaskSettings);
                     }
                     break;
+                case HotkeyType.OCRLiveTranslate:
+                    OCRLiveTranslate(safeTaskSettings);
+                    break;
                 case HotkeyType.QRCode:
                     if (!string.IsNullOrEmpty(filePath))
                     {
@@ -1503,6 +1506,17 @@ namespace ShareX
             new BingVisualSearchSharingService().CreateSharer(null, null).ShareURL(url);
         }
 
+        public static void OCRLiveTranslate(TaskSettings taskSettings = null)
+        {
+            if (Program.Settings == null || !Program.Settings.ExperimentalOCRLiveTranslate)
+            {
+                MessageBox.Show(Resources.OCRLiveTranslate_ExperimentalDisabled, "ShareX", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            OCRLiveTranslateForm.Toggle(taskSettings);
+        }
+
         public static async Task OCRImage(TaskSettings taskSettings = null)
         {
             if (taskSettings == null) taskSettings = TaskSettings.GetDefaultTaskSettings();
@@ -1998,6 +2012,7 @@ namespace ShareX
                     case HotkeyType.VideoConverter: return Resources.camcorder_pencil;
                     case HotkeyType.VideoThumbnailer: return Resources.images_stack;
                     case HotkeyType.OCR: return ShareXResources.IsDarkTheme ? Resources.edit_drop_cap_white : Resources.edit_drop_cap;
+                    case HotkeyType.OCRLiveTranslate: return Resources.globe__arrow;
                     case HotkeyType.QRCode: return ShareXResources.IsDarkTheme ? Resources.barcode_2d_white : Resources.barcode_2d;
                     case HotkeyType.QRCodeDecodeFromScreen: return ShareXResources.IsDarkTheme ? Resources.barcode_2d_white : Resources.barcode_2d;
                     case HotkeyType.HashCheck: return Resources.application_task;
@@ -2290,7 +2305,7 @@ namespace ShareX
 
         public static async Task DownloadDevBuild()
         {
-            GitHubUpdateChecker updateChecker = new GitHubUpdateChecker("GotoFinal", "ShareX-HDR")
+            GitHubUpdateChecker updateChecker = new GitHubUpdateChecker("ZakovAU", "ShareXPlus-HDR")
             {
                 IsDev = true,
                 IncludePreRelease = true,

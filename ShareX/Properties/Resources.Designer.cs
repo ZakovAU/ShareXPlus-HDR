@@ -2234,6 +2234,114 @@ namespace ShareX.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        internal static string OCRLiveTranslate_Close {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Close", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Copy translation.
+        /// </summary>
+        internal static string OCRLiveTranslate_Copy {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Copy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to OCR Live Translate is experimental and is off by default..
+        /// </summary>
+        internal static string OCRLiveTranslate_ExperimentalDisabled {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_ExperimentalDisabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Lock overlay (clicks pass through to the game).
+        /// </summary>
+        internal static string OCRLiveTranslate_Lock {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Lock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pause.
+        /// </summary>
+        internal static string OCRLiveTranslate_Pause {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Pause", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reselect region.
+        /// </summary>
+        internal static string OCRLiveTranslate_ReselectRegion {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_ReselectRegion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Resume.
+        /// </summary>
+        internal static string OCRLiveTranslate_Resume {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Resume", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to OCR.
+        /// </summary>
+        internal static string OCRLiveTranslate_Source {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Source", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Translate to.
+        /// </summary>
+        internal static string OCRLiveTranslate_Target {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Target", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to OCR Live Translate.
+        /// </summary>
+        internal static string OCRLiveTranslate_Title {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unlock overlay.
+        /// </summary>
+        internal static string OCRLiveTranslate_Unlock {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Unlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for text....
+        /// </summary>
+        internal static string OCRLiveTranslate_Waiting {
+            get {
+                return ResourceManager.GetString("OCRLiveTranslate_Waiting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap pencil {

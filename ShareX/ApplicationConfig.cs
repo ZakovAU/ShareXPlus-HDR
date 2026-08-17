@@ -196,6 +196,10 @@ namespace ShareX
         [Category("Application"), DefaultValue(false), Description("")]
         public bool DevMode { get; set; }
 
+        [Category("Experimental"), DefaultValue(false), DisplayName("OCR Live Translate"),
+         Description("Enable the experimental live OCR translate overlay. After enabling, it appears under Tools and can be bound as a hotkey.")]
+        public bool ExperimentalOCRLiveTranslate { get; set; }
+
         [Category("Hotkey"), DefaultValue(false), Description("Disables hotkeys.")]
         public bool DisableHotkeys { get; set; }
 

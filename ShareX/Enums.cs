@@ -294,6 +294,8 @@ namespace ShareX
         [Category(EnumExtensions.HotkeyType_Category_Tools)]
         OCR,
         [Category(EnumExtensions.HotkeyType_Category_Tools)]
+        OCRLiveTranslate,
+        [Category(EnumExtensions.HotkeyType_Category_Tools)]
         QRCode,
         [Category(EnumExtensions.HotkeyType_Category_Tools)]
         QRCodeDecodeFromScreen,

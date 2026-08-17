@@ -33,7 +33,7 @@ namespace ShareX
 
         public override GitHubUpdateChecker CreateUpdateChecker()
         {
-                return new GitHubUpdateChecker("GotoFinal", "ShareX-HDR")
+                return new GitHubUpdateChecker("ZakovAU", "ShareXPlus-HDR")
                 {
                     IsPortable = Program.Portable,
                     IncludePreRelease = UpdateChannel != UpdateChannel.Release,

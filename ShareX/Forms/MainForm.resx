@@ -561,6 +561,12 @@
   <data name="tsmiOCR.Text" xml:space="preserve">
     <value>OCR...</value>
   </data>
+  <data name="tsmiOCRLiveTranslate.Size" type="System.Drawing.Size, System.Drawing">
+    <value>184, 22</value>
+  </data>
+  <data name="tsmiOCRLiveTranslate.Text" xml:space="preserve">
+    <value>OCR Live Translate (Experimental)...</value>
+  </data>
   <data name="tsmiQRCode.Size" type="System.Drawing.Size, System.Drawing">
     <value>184, 22</value>
   </data>
@@ -1598,6 +1604,12 @@
   </data>
   <data name="tsmiTrayOCR.Text" xml:space="preserve">
     <value>OCR...</value>
+  </data>
+  <data name="tsmiTrayOCRLiveTranslate.Size" type="System.Drawing.Size, System.Drawing">
+    <value>184, 22</value>
+  </data>
+  <data name="tsmiTrayOCRLiveTranslate.Text" xml:space="preserve">
+    <value>OCR Live Translate (Experimental)...</value>
   </data>
   <data name="tsmiTrayQRCode.Size" type="System.Drawing.Size, System.Drawing">
     <value>184, 22</value>

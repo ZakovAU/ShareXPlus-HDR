@@ -850,6 +850,9 @@ namespace ShareX
             tsmiTrayOCR.Image = TaskHelpers.FindMenuIcon(HotkeyType.OCR);
             tsmiOCRImage.Image = TaskHelpers.FindMenuIcon(HotkeyType.OCR);
 
+            tsmiOCRLiveTranslate.Image = TaskHelpers.FindMenuIcon(HotkeyType.OCRLiveTranslate);
+            tsmiTrayOCRLiveTranslate.Image = TaskHelpers.FindMenuIcon(HotkeyType.OCRLiveTranslate);
+
             tsmiShortenURL.Image = TaskHelpers.FindMenuIcon(HotkeyType.ShortenURL);
             tsmiTrayShortenURL.Image = TaskHelpers.FindMenuIcon(HotkeyType.ShortenURL);
             tsmiURLShorteners.Image = TaskHelpers.FindMenuIcon(HotkeyType.ShortenURL);
@@ -944,6 +947,7 @@ namespace ShareX
             niTray.Text = Program.TitleShort;
 
             tsmiRestartAsAdmin.Visible = HelpersOptions.DevMode && !Helpers.IsAdministrator();
+            tsmiOCRLiveTranslate.Visible = tsmiTrayOCRLiveTranslate.Visible = Program.Settings.ExperimentalOCRLiveTranslate;
 
 #if RELEASE
             ConfigureAutoUpdate();
@@ -1769,6 +1773,23 @@ namespace ShareX
                 DebugHelper.WriteException(ex);
             }
             finally
+            {
+                this.ForceActivate();
+            }
+        }
+
+        private void tsmiOCRLiveTranslate_Click(object sender, EventArgs e)
+        {
+            bool wasVisible = Visible;
+
+            if (wasVisible && !OCRLiveTranslateForm.IsRunning)
+            {
+                Hide();
+            }
+
+            TaskHelpers.OCRLiveTranslate();
+
+            if (wasVisible && !OCRLiveTranslateForm.IsRunning)
             {
                 this.ForceActivate();
             }

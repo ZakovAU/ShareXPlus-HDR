@@ -1559,6 +1559,15 @@ namespace ShareX.HelpersLib.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to OCR Live Translate (Experimental).
+        /// </summary>
+        internal static string HotkeyType_OCRLiveTranslate {
+            get {
+                return ResourceManager.GetString("HotkeyType_OCRLiveTranslate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Open history window.
         /// </summary>
         internal static string HotkeyType_OpenHistory {
